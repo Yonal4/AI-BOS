@@ -1,0 +1,1 @@
+- [AI BOS Architecture](aibos-architecture.md) — Full-stack React+Vite+Express app; all Claude calls go through POST /api/ai server proxy, never direct from frontend.

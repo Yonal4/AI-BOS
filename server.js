@@ -7,7 +7,8 @@ import brainRouter from './server/brain-routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const PORT = 3001;
+const isProd = process.env.NODE_ENV === 'production';
+const PORT = isProd ? (process.env.PORT || 5000) : 3001;
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -54,13 +55,12 @@ app.post('/api/ai', async (req, res) => {
 
 app.use('/api/brain', brainRouter);
 
-if (process.env.NODE_ENV === 'production') {
-  const distPath = path.join(__dirname, 'dist');
-  if (fs.existsSync(distPath)) {
-    app.use(express.static(distPath));
-    app.get('*', (_, res) => res.sendFile(path.join(distPath, 'index.html')));
-  }
-  app.listen(5000, '0.0.0.0', () => console.log('AI BOS running on port 5000'));
-} else {
-  app.listen(PORT, () => console.log(`AI BOS API proxy running on port ${PORT}`));
+const distPath = path.join(__dirname, 'dist');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.get('*', (_, res) => res.sendFile(path.join(distPath, 'index.html')));
 }
+
+app.listen(PORT, '0.0.0.0', () =>
+  console.log(`AI BOS running on port ${PORT} (${isProd ? 'production' : 'development'})`)
+);

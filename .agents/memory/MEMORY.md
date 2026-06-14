@@ -1,1 +1,2 @@
 - [AI BOS Architecture](aibos-architecture.md) — Full-stack React+Vite+Express app; all Claude calls go through POST /api/ai server proxy, never direct from frontend.
+- [Company Brain Stack](company-brain-stack.md) — Real RAG implementation: PostgreSQL + Qdrant Cloud + Voyage AI embeddings; graceful fallback to PG full-text search.

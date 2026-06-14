@@ -1,9 +1,9 @@
 import express from 'express';
 import cors from 'cors';
-import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
+import brainRouter from './server/brain-routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -51,6 +51,8 @@ app.post('/api/ai', async (req, res) => {
     res.status(500).json({ error: 'AI request failed. Check your API key.' });
   }
 });
+
+app.use('/api/brain', brainRouter);
 
 if (process.env.NODE_ENV === 'production') {
   const distPath = path.join(__dirname, 'dist');

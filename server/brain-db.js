@@ -14,12 +14,12 @@ function getPool() {
   return pool;
 }
 
-export async function createDocument({ title, type, filename, sizeBytes }) {
+export async function createDocument({ title, type, filename, sizeBytes, orgId }) {
   const { rows } = await getPool().query(
-    `INSERT INTO brain_documents (title, type, filename, size_bytes, status)
-     VALUES ($1, $2, $3, $4, 'processing')
+    `INSERT INTO brain_documents (title, type, filename, size_bytes, status, org_id)
+     VALUES ($1, $2, $3, $4, 'processing', $5)
      RETURNING *`,
-    [title, type, filename || null, sizeBytes || 0]
+    [title, type, filename || null, sizeBytes || 0, orgId || 'default']
   );
   return rows[0];
 }
@@ -41,16 +41,16 @@ export async function updateDocumentError(id, errorMsg) {
   );
 }
 
-export async function insertChunks(documentId, chunks) {
+export async function insertChunks(documentId, chunks, orgId) {
   if (!chunks.length) return;
   const client = await getPool().connect();
   try {
     await client.query('BEGIN');
     for (let i = 0; i < chunks.length; i++) {
       await client.query(
-        `INSERT INTO brain_chunks (document_id, content, chunk_index, qdrant_id)
-         VALUES ($1, $2, $3, $4)`,
-        [documentId, chunks[i].content, i, chunks[i].qdrantId || null]
+        `INSERT INTO brain_chunks (document_id, content, chunk_index, qdrant_id, org_id)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [documentId, chunks[i].content, i, chunks[i].qdrantId || null, orgId || 'default']
       );
     }
     await client.query('COMMIT');
@@ -62,9 +62,10 @@ export async function insertChunks(documentId, chunks) {
   }
 }
 
-export async function listDocuments() {
+export async function listDocuments(orgId) {
   const { rows } = await getPool().query(
-    `SELECT * FROM brain_documents ORDER BY created_at DESC`
+    `SELECT * FROM brain_documents WHERE org_id=$1 ORDER BY created_at DESC`,
+    [orgId || 'default']
   );
   return rows;
 }
@@ -87,7 +88,7 @@ export async function getChunksByDocument(documentId) {
   return rows;
 }
 
-export async function fullTextSearch(query, limit = 8) {
+export async function fullTextSearch(query, orgId, limit = 8) {
   const { rows } = await getPool().query(
     `SELECT
        bc.id,
@@ -100,32 +101,35 @@ export async function fullTextSearch(query, limit = 8) {
      JOIN brain_documents bd ON bd.id = bc.document_id
      WHERE bc.tsv @@ plainto_tsquery('english', $1)
        AND bd.status = 'ready'
+       AND bd.org_id = $2
      ORDER BY score DESC
-     LIMIT $2`,
-    [query, limit]
+     LIMIT $3`,
+    [query, orgId || 'default', limit]
   );
   return rows;
 }
 
-export async function getChunksByQdrantIds(qdrantIds) {
+export async function getChunksByQdrantIds(qdrantIds, orgId) {
   if (!qdrantIds.length) return [];
   const { rows } = await getPool().query(
     `SELECT bc.id, bc.content, bc.chunk_index, bc.qdrant_id,
             bd.title AS doc_title, bd.type AS doc_type
      FROM brain_chunks bc
      JOIN brain_documents bd ON bd.id = bc.document_id
-     WHERE bc.qdrant_id = ANY($1::text[])`,
-    [qdrantIds]
+     WHERE bc.qdrant_id = ANY($1::text[])
+       AND bd.org_id = $2`,
+    [qdrantIds, orgId || 'default']
   );
   return rows;
 }
 
-export async function getStats() {
+export async function getStats(orgId) {
   const { rows } = await getPool().query(
     `SELECT
-       (SELECT COUNT(*) FROM brain_documents WHERE status='ready')::int AS doc_count,
-       (SELECT COALESCE(SUM(chunk_count),0) FROM brain_documents WHERE status='ready')::int AS chunk_count,
-       (SELECT COUNT(*) FROM brain_documents WHERE status='processing')::int AS processing_count`
+       (SELECT COUNT(*) FROM brain_documents WHERE status='ready' AND org_id=$1)::int AS doc_count,
+       (SELECT COALESCE(SUM(chunk_count),0) FROM brain_documents WHERE status='ready' AND org_id=$1)::int AS chunk_count,
+       (SELECT COUNT(*) FROM brain_documents WHERE status='processing' AND org_id=$1)::int AS processing_count`,
+    [orgId || 'default']
   );
   return rows[0];
 }

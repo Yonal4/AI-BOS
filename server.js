@@ -13,6 +13,16 @@ const PORT = isProd ? (process.env.PORT || 5000) : 3001;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+if (process.env.CLERK_SECRET_KEY) {
+  try {
+    const { clerkMiddleware } = await import('@clerk/express');
+    app.use(clerkMiddleware());
+    console.log('Clerk middleware active');
+  } catch (e) {
+    console.warn('Clerk middleware failed to load:', e.message);
+  }
+}
+
 app.get('/health', (_, res) => res.json({ status: 'ok', time: new Date() }));
 
 app.post('/api/ai', async (req, res) => {
@@ -42,9 +52,7 @@ app.post('/api/ai', async (req, res) => {
     });
 
     const data = await response.json();
-    if (data.error) {
-      return res.status(400).json({ error: data.error.message });
-    }
+    if (data.error) return res.status(400).json({ error: data.error.message });
     const text = data.content?.find(b => b.type === 'text')?.text || '';
     res.json({ text });
   } catch (err) {

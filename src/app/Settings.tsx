@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { OrganizationProfile, useOrganization } from '@clerk/clerk-react'
 import { C, AGENTS } from '../design'
 import { Card, Btn, Badge } from '../components/ui'
 
@@ -6,45 +7,64 @@ export default function Settings() {
   const [view, setView] = useState('profile')
   const [saved, setSaved] = useState<string|null>(null)
   const [autonomy, setAutonomy] = useState<Record<string,number>>({ aria:75, marcus:90, lexi:70, felix:60, nova:80 })
+  const { organization, membership } = useOrganization()
 
   const save = (section: string) => {
     setSaved(section)
     setTimeout(() => setSaved(null), 2000)
   }
 
+  const role = membership?.role
+  const isAdmin = role === 'org:admin'
+
+  const SETTINGS_TABS = [
+    {v:'profile',       l:'Company Profile'},
+    {v:'agents',        l:'Agent Settings'},
+    {v:'team',          l:'Team & Permissions'},
+    {v:'ai',            l:'AI Preferences'},
+    {v:'notifications', l:'Notification Prefs'},
+    {v:'security',      l:'Security'},
+  ]
+
   return (
     <div style={{ flex:1, overflow:'auto', padding:'20px', background:C.bg }}>
       <div style={{ marginBottom:16 }}>
         <div style={{ fontSize:18, fontWeight:800, letterSpacing:-.5 }}>⚙️ Settings</div>
-        <div style={{ fontSize:12, color:C.text3, marginTop:2 }}>Company, agents, team, and preferences</div>
+        <div style={{ fontSize:12, color:C.text3, marginTop:2 }}>
+          Company, agents, team, and preferences
+          {organization && <span style={{ marginLeft:8, color:C.purple2, fontWeight:600 }}>· {organization.name}</span>}
+          {role && <span style={{ marginLeft:8, padding:'2px 8px', background:'rgba(124,109,250,0.12)', border:`0.5px solid rgba(124,109,250,0.25)`, borderRadius:20, fontSize:10, color:C.purple2, fontWeight:600 }}>{role === 'org:admin' ? 'Admin' : 'Member'}</span>}
+        </div>
       </div>
 
       <div style={{ display:'flex', gap:16 }}>
         {/* Left nav */}
         <div style={{ width:180, flexShrink:0 }}>
-          {[{v:'profile',l:'Company Profile'},{v:'agents',l:'Agent Settings'},{v:'team',l:'Team & Permissions'},{v:'ai',l:'AI Preferences'},{v:'notifications',l:'Notification Prefs'},{v:'security',l:'Security'}].map(s => (
+          {SETTINGS_TABS.map(s => (
             <div key={s.v} onClick={() => setView(s.v)} style={{ padding:'8px 12px', borderRadius:8, cursor:'pointer', color:view===s.v?C.purple2:C.text3, background:view===s.v?'rgba(124,109,250,0.12)':'transparent', fontSize:13, marginBottom:2, fontWeight:view===s.v?600:400, border:view===s.v?`0.5px solid rgba(124,109,250,0.25)`:'0.5px solid transparent' }}>{s.l}</div>
           ))}
         </div>
 
         {/* Content */}
-        <div style={{ flex:1 }}>
+        <div style={{ flex:1, minWidth:0 }}>
           {view==='profile' && (
             <Card>
               <div style={{ fontSize:14, fontWeight:700, marginBottom:16 }}>Company Profile</div>
-              {[{l:'Company Name',p:'Acme Inc.',t:'text'},{l:'Website',p:'https://acme.com',t:'text'},{l:'Industry',p:'SaaS / Technology',t:'text'},{l:'Team Size',p:'11-50 employees',t:'text'},{l:'Timezone',p:'America/New_York (EST)',t:'text'}].map(f => (
+              {[{l:'Company Name',p:organization?.name||'Acme Inc.',t:'text'},{l:'Website',p:'https://acme.com',t:'text'},{l:'Industry',p:'SaaS / Technology',t:'text'},{l:'Team Size',p:'11-50 employees',t:'text'},{l:'Timezone',p:'America/New_York (EST)',t:'text'}].map(f => (
                 <div key={f.l} style={{ marginBottom:14 }}>
                   <div style={{ fontSize:12, color:C.text2, marginBottom:5 }}>{f.l}</div>
-                  <input defaultValue={f.p} style={{ width:'100%', padding:'9px 12px', background:'rgba(255,255,255,0.04)', border:`0.5px solid ${C.border2}`, borderRadius:8, color:C.text, fontSize:13, outline:'none' }}/>
+                  <input defaultValue={f.p} disabled={!isAdmin} style={{ width:'100%', padding:'9px 12px', background:'rgba(255,255,255,0.04)', border:`0.5px solid ${C.border2}`, borderRadius:8, color:C.text, fontSize:13, outline:'none', opacity:isAdmin?1:0.6 }}/>
                 </div>
               ))}
               <div style={{ marginBottom:14 }}>
                 <div style={{ fontSize:12, color:C.text2, marginBottom:5 }}>Company Description (for AI context)</div>
-                <textarea defaultValue="We build AI automation tools for growing startups. Our ICP is funded B2B SaaS companies with 10-200 employees looking to scale operations without hiring." style={{ width:'100%', minHeight:90, padding:'9px 12px', background:'rgba(255,255,255,0.04)', border:`0.5px solid ${C.border2}`, borderRadius:8, color:C.text, fontSize:13, outline:'none', resize:'vertical', lineHeight:1.6, fontFamily:'inherit' }}/>
+                <textarea disabled={!isAdmin} defaultValue="We build AI automation tools for growing startups. Our ICP is funded B2B SaaS companies with 10-200 employees looking to scale operations without hiring." style={{ width:'100%', minHeight:90, padding:'9px 12px', background:'rgba(255,255,255,0.04)', border:`0.5px solid ${C.border2}`, borderRadius:8, color:C.text, fontSize:13, outline:'none', resize:'vertical', lineHeight:1.6, fontFamily:'inherit', opacity:isAdmin?1:0.6 }}/>
               </div>
-              <div style={{ display:'flex', gap:10 }}>
+              {isAdmin ? (
                 <Btn onClick={() => save('profile')} style={{ minWidth:120 }}>{saved==='profile'?'✓ Saved!':'Save Profile'}</Btn>
-              </div>
+              ) : (
+                <div style={{ fontSize:12, color:C.text3 }}>Admin access required to edit company profile.</div>
+              )}
             </Card>
           )}
 
@@ -63,16 +83,16 @@ export default function Settings() {
                       </div>
                       <span style={{ fontSize:13, fontWeight:700, color:a.color }}>{autonomy[a.id]}%</span>
                     </div>
-                    <input type="range" min={0} max={100} value={autonomy[a.id]}
+                    <input type="range" min={0} max={100} value={autonomy[a.id]} disabled={!isAdmin}
                       onChange={e => setAutonomy(p => ({ ...p, [a.id]:+e.target.value }))}
-                      style={{ width:'100%', accentColor:a.color, cursor:'pointer' }}/>
+                      style={{ width:'100%', accentColor:a.color, cursor:isAdmin?'pointer':'not-allowed' }}/>
                     <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:C.text3, marginTop:2 }}>
                       <span>Always ask approval</span>
                       <span>Fully autonomous</span>
                     </div>
                   </div>
                 ))}
-                <Btn onClick={() => save('agents')}>{saved==='agents'?'✓ Saved!':'Save Settings'}</Btn>
+                {isAdmin && <Btn onClick={() => save('agents')}>{saved==='agents'?'✓ Saved!':'Save Settings'}</Btn>}
               </Card>
               <Card>
                 <div style={{ fontSize:14, fontWeight:700, marginBottom:14 }}>Agent Personas</div>
@@ -84,8 +104,8 @@ export default function Settings() {
                       <Badge type="success">Active</Badge>
                     </div>
                     <div style={{ display:'flex', gap:8 }}>
-                      <button style={{ padding:'5px 12px', background:'rgba(255,255,255,0.04)', border:`0.5px solid ${C.border}`, borderRadius:6, color:C.text3, fontSize:11, cursor:'pointer' }}>Configure</button>
-                      <button style={{ padding:'5px 12px', background:'rgba(255,255,255,0.04)', border:`0.5px solid ${C.border}`, borderRadius:6, color:C.text3, fontSize:11, cursor:'pointer' }}>Tone & Voice</button>
+                      <button disabled={!isAdmin} style={{ padding:'5px 12px', background:'rgba(255,255,255,0.04)', border:`0.5px solid ${C.border}`, borderRadius:6, color:C.text3, fontSize:11, cursor:isAdmin?'pointer':'not-allowed', opacity:isAdmin?1:0.5 }}>Configure</button>
+                      <button disabled={!isAdmin} style={{ padding:'5px 12px', background:'rgba(255,255,255,0.04)', border:`0.5px solid ${C.border}`, borderRadius:6, color:C.text3, fontSize:11, cursor:isAdmin?'pointer':'not-allowed', opacity:isAdmin?1:0.5 }}>Tone & Voice</button>
                     </div>
                   </div>
                 ))}
@@ -94,31 +114,53 @@ export default function Settings() {
           )}
 
           {view==='team' && (
-            <Card>
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-                <div style={{ fontSize:14, fontWeight:700 }}>Team Members</div>
-                <Btn style={{ fontSize:11 }}>+ Invite Member</Btn>
-              </div>
-              {[
-                { name:'Alex Morgan', email:'alex@acme.com', role:'Owner', status:'Active' },
-                { name:'Sam Kim',     email:'sam@acme.com',  role:'Admin', status:'Active' },
-                { name:'Jordan Lee',  email:'j.lee@acme.com',role:'Member',status:'Active' },
-              ].map((m,i) => (
-                <div key={i} style={{ display:'flex', gap:12, padding:'12px 0', borderBottom:`0.5px solid ${C.border}`, alignItems:'center' }}>
-                  <div style={{ width:36, height:36, borderRadius:'50%', background:`rgba(124,109,250,0.2)`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700, color:C.purple2 }}>{m.name[0]}</div>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:13, fontWeight:600 }}>{m.name}</div>
-                    <div style={{ fontSize:11, color:C.text3 }}>{m.email}</div>
+            <div>
+              {isAdmin ? (
+                <OrganizationProfile
+                  appearance={{
+                    elements: {
+                      rootBox: { width: '100%' },
+                      card: {
+                        background: C.bg2,
+                        border: `0.5px solid ${C.border}`,
+                        borderRadius: '12px',
+                        boxShadow: 'none',
+                        width: '100%',
+                        maxWidth: '100%',
+                      },
+                      navbar: { display: 'none' },
+                      pageScrollBox: { padding: '16px' },
+                      headerTitle: { color: C.text, fontSize: '14px', fontWeight: '700' },
+                      headerSubtitle: { color: C.text3, fontSize: '12px' },
+                      formFieldLabel: { color: C.text2, fontSize: '12px' },
+                      formFieldInput: {
+                        background: 'rgba(255,255,255,0.04)',
+                        border: `0.5px solid ${C.border2}`,
+                        color: C.text,
+                        fontSize: '13px',
+                      },
+                      formButtonPrimary: {
+                        background: C.purple,
+                        fontSize: '13px',
+                      },
+                      tableHead: { color: C.text3, fontSize: '11px' },
+                      tableCellText: { color: C.text2, fontSize: '12px' },
+                      badge: { fontSize: '10px' },
+                      memberListTableRow: { borderColor: C.border },
+                    }
+                  }}
+                  routing="hash"
+                />
+              ) : (
+                <Card>
+                  <div style={{ fontSize:14, fontWeight:700, marginBottom:16 }}>Team Members</div>
+                  <div style={{ padding:'24px', textAlign:'center', color:C.text3, fontSize:13 }}>
+                    <div style={{ fontSize:24, marginBottom:8 }}>🔒</div>
+                    Admin access required to manage team members and invitations.
                   </div>
-                  <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                    <select defaultValue={m.role} style={{ padding:'5px 8px', background:C.bg3, border:`0.5px solid ${C.border2}`, borderRadius:6, color:C.text2, fontSize:12, outline:'none' }}>
-                      <option>Owner</option><option>Admin</option><option>Member</option>
-                    </select>
-                    {m.role !== 'Owner' && <button style={{ fontSize:11, color:C.coral, background:'none', border:'none', cursor:'pointer' }}>Remove</button>}
-                  </div>
-                </div>
-              ))}
-            </Card>
+                </Card>
+              )}
+            </div>
           )}
 
           {view==='ai' && (
@@ -149,12 +191,14 @@ export default function Settings() {
           {view==='security' && (
             <Card>
               <div style={{ fontSize:14, fontWeight:700, marginBottom:14 }}>Security Settings</div>
-              {[{l:'Two-factor authentication',s:'Enabled',c:C.teal},{l:'Session timeout',s:'4 hours',c:C.text2},{l:'IP allowlist',s:'Disabled',c:C.text3},{l:'SSO / SAML',s:'Team+ plan required',c:C.text3}].map(s => (
+              <div style={{ padding:'10px 14px', background:'rgba(124,109,250,0.06)', border:`0.5px solid rgba(124,109,250,0.25)`, borderRadius:8, fontSize:12, color:C.purple2, marginBottom:16 }}>
+                🔐 Authentication is managed by Clerk. SSO, MFA, and advanced security settings are configured through your Clerk dashboard.
+              </div>
+              {[{l:'Two-factor authentication',s:'Managed by Clerk',c:C.teal},{l:'Session timeout',s:'4 hours',c:C.text2},{l:'IP allowlist',s:'Clerk dashboard',c:C.text3},{l:'SSO / SAML',s:'Clerk Enterprise',c:C.text3}].map(s => (
                 <div key={s.l} style={{ display:'flex', justifyContent:'space-between', padding:'12px 0', borderBottom:`0.5px solid ${C.border}`, alignItems:'center' }}>
                   <span style={{ fontSize:13, color:C.text2 }}>{s.l}</span>
                   <div style={{ display:'flex', gap:8, alignItems:'center' }}>
                     <span style={{ fontSize:12, fontWeight:600, color:s.c }}>{s.s}</span>
-                    <button style={{ fontSize:11, color:C.purple2, background:'none', border:'none', cursor:'pointer' }}>Configure</button>
                   </div>
                 </div>
               ))}

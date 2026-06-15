@@ -9,6 +9,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",
+    "@clerk/clerk-react": "^5.61.8",
+    "@clerk/express": "^2.1.26",
+    "@clerk/themes": "^2.4.57",
     "@qdrant/js-client-rest": "^1.18.0",
     "concurrently": "^8.2.2",
     "cors": "^2.8.6",

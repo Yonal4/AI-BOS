@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { C } from '../design'
 import { Card, Btn, Pill, Spin } from '../components/ui'
 import { callAI } from '../utils/ai'
+import { useOrgId } from '../context/OrgContext'
 
 const DOC_TYPES = [
   { id:'playbook',  label:'Sales Playbook',    emoji:'📋', example:'Objection handling, ICP, discovery questions' },
@@ -67,6 +68,7 @@ function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
 }
 
 export default function CompanyBrain() {
+  const orgId = useOrgId()
   const [tab, setTab] = useState<'docs'|'search'|'missing'|'add'>('docs')
   const [docs, setDocs] = useState<BrainDoc[]>([])
   const [status, setStatus] = useState<BrainStatus | null>(null)
@@ -89,21 +91,26 @@ export default function CompanyBrain() {
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  const orgHeaders = (extra?: Record<string, string>) => ({
+    ...(orgId ? { 'x-org-id': orgId } : {}),
+    ...extra
+  })
+
   const fetchDocs = useCallback(async () => {
     try {
-      const r = await fetch('/api/brain/documents')
+      const r = await fetch('/api/brain/documents', { headers: orgId ? { 'x-org-id': orgId } : {} })
       const data = await r.json()
       if (data.documents) setDocs(data.documents)
     } catch {/* ignore */}
-  }, [])
+  }, [orgId])
 
   const fetchStatus = useCallback(async () => {
     try {
-      const r = await fetch('/api/brain/status')
+      const r = await fetch('/api/brain/status', { headers: orgId ? { 'x-org-id': orgId } : {} })
       const data = await r.json()
       setStatus(data)
     } catch {/* ignore */}
-  }, [])
+  }, [orgId])
 
   useEffect(() => {
     Promise.all([fetchDocs(), fetchStatus()]).finally(() => setLoadingDocs(false))
@@ -134,7 +141,7 @@ export default function CompanyBrain() {
     setQuerying(true); setSearchResults([]); setAiAnswer('')
     try {
       const r = await fetch('/api/brain/search', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: orgHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ query, limit: 6 })
       })
       const data = await r.json()
@@ -163,7 +170,7 @@ export default function CompanyBrain() {
       fd.append('file', addFile)
       fd.append('title', addTitle)
       fd.append('type', addType)
-      const r = await fetch('/api/brain/upload', { method: 'POST', body: fd })
+      const r = await fetch('/api/brain/upload', { method: 'POST', body: fd, headers: orgHeaders() })
       const data = await r.json()
       if (data.error) throw new Error(data.error)
       setUploadMsg('✓ Uploaded! Processing in background…')
@@ -182,7 +189,7 @@ export default function CompanyBrain() {
     setUploading(true); setUploadMsg('')
     try {
       const r = await fetch('/api/brain/add', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: orgHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ title: addTitle, type: addType, content: addText })
       })
       const data = await r.json()

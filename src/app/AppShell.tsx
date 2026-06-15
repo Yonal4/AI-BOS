@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import { UserButton, OrganizationSwitcher, useOrganization } from '@clerk/clerk-react'
 import { C, AGENTS } from '../design'
 import { Pill } from '../components/ui'
+import { OrgContext } from '../context/OrgContext'
 import Dashboard from './Dashboard'
 import CommandCenter from './CommandCenter'
 import CompanyBrain from './CompanyBrain'
@@ -42,8 +44,10 @@ const NAV_SECTIONS = [
   ]},
 ]
 
-export default function AppShell({ user, onLogout }: { user: any; onLogout: () => void }) {
+export default function AppShell() {
   const [view, setView] = useState('command')
+  const { organization } = useOrganization()
+  const orgId = organization?.id ?? null
 
   const VIEWS: Record<string, JSX.Element> = {
     command:      <CommandCenter />,
@@ -64,88 +68,116 @@ export default function AppShell({ user, onLogout }: { user: any; onLogout: () =
   }
 
   return (
-    <div style={{ display:'flex', height:'100vh', background:C.bg, fontFamily:"'Inter',system-ui,sans-serif", color:C.text, overflow:'hidden' }}>
-      {/* SIDEBAR */}
-      <div style={{ width:214, background:C.bg2, borderRight:`0.5px solid ${C.border}`, display:'flex', flexDirection:'column', flexShrink:0, overflow:'hidden' }}>
-        {/* Logo */}
-        <div style={{ padding:'14px 14px 12px', display:'flex', alignItems:'center', gap:8, borderBottom:`0.5px solid ${C.border}` }}>
-          <div style={{ width:28, height:28, background:C.grad, borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:'#fff', flexShrink:0 }}>B</div>
-          <span style={{ fontWeight:700, fontSize:14, letterSpacing:-.3 }}>AI BOS</span>
-          <Pill color={C.teal} bg="rgba(34,211,176,0.12)" style={{ fontSize:10, marginLeft:'auto' }}>v2</Pill>
-        </div>
-
-        {/* Agent status strip */}
-        <div style={{ padding:'8px 12px', borderBottom:`0.5px solid ${C.border}`, display:'flex', gap:6, flexWrap:'wrap' }}>
-          {AGENTS.map(a => (
-            <div key={a.id} title={`${a.name} — ${a.role}`} style={{ width:22, height:22, borderRadius:'50%', background:a.bg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, cursor:'default' }}>
-              {a.emoji}
-            </div>
-          ))}
-          <span style={{ fontSize:10, color:C.teal, marginLeft:4, alignSelf:'center' }}>5 active</span>
-        </div>
-
-        {/* Nav */}
-        <div style={{ flex:1, overflowY:'auto', padding:'4px 8px' }}>
-          {NAV_SECTIONS.map(sec => (
-            <div key={sec.label}>
-              <div style={{ fontSize:9, color:C.text3, letterSpacing:.8, textTransform:'uppercase', padding:'10px 8px 4px' }}>{sec.label}</div>
-              {sec.items.map(n => (
-                <div key={n.id} onClick={() => setView(n.id)}
-                  style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, cursor:'pointer', marginBottom:1,
-                    background:view===n.id?'rgba(124,109,250,0.12)':'transparent',
-                    color:view===n.id?C.purple2:C.text3,
-                    fontSize:12, fontWeight:view===n.id?600:400,
-                    border:view===n.id?`0.5px solid rgba(124,109,250,0.25)`:'0.5px solid transparent',
-                    transition:'.1s'
-                  }}>
-                  <span style={{ fontSize:13 }}>{n.icon}</span>
-                  <span style={{ flex:1 }}>{n.label}</span>
-                  {n.badge && <span style={{ background:C.coral, color:'#fff', fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:10 }}>{n.badge}</span>}
-                  {view===n.id && <div style={{ width:5, height:5, borderRadius:'50%', background:C.teal }}/>}
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-
-        {/* Brain health + logout */}
-        <div style={{ padding:'10px 12px', borderTop:`0.5px solid ${C.border}` }}>
-          <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
-            <span style={{ fontSize:10, color:C.text3 }}>Brain Health</span>
-            <span style={{ fontSize:10, color:C.teal, fontWeight:600 }}>74%</span>
+    <OrgContext.Provider value={{ orgId }}>
+      <div style={{ display:'flex', height:'100vh', background:C.bg, fontFamily:"'Inter',system-ui,sans-serif", color:C.text, overflow:'hidden' }}>
+        {/* SIDEBAR */}
+        <div style={{ width:214, background:C.bg2, borderRight:`0.5px solid ${C.border}`, display:'flex', flexDirection:'column', flexShrink:0, overflow:'hidden' }}>
+          {/* Logo */}
+          <div style={{ padding:'14px 14px 12px', display:'flex', alignItems:'center', gap:8, borderBottom:`0.5px solid ${C.border}` }}>
+            <div style={{ width:28, height:28, background:'linear-gradient(135deg,#7c6dfa,#22d3b0)', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:'#fff', flexShrink:0 }}>B</div>
+            <span style={{ fontWeight:700, fontSize:14, letterSpacing:-.3 }}>AI BOS</span>
+            <Pill color={C.teal} bg="rgba(34,211,176,0.12)" style={{ fontSize:10, marginLeft:'auto' }}>v2</Pill>
           </div>
-          <div style={{ height:3, background:'rgba(255,255,255,0.07)', borderRadius:3, marginBottom:10 }}>
-            <div style={{ height:'100%', width:'74%', background:C.grad, borderRadius:3 }}/>
+
+          {/* Organization switcher */}
+          <div style={{ padding:'8px 12px', borderBottom:`0.5px solid ${C.border}` }}>
+            <OrganizationSwitcher
+              hidePersonal={true}
+              afterSelectOrganizationUrl="/"
+              afterCreateOrganizationUrl="/"
+              appearance={{
+                elements: {
+                  organizationSwitcherTrigger: {
+                    width: '100%',
+                    padding: '6px 8px',
+                    borderRadius: '8px',
+                    border: `0.5px solid ${C.border2}`,
+                    background: 'rgba(255,255,255,0.03)',
+                    color: C.text2,
+                    fontSize: '12px',
+                    justifyContent: 'flex-start',
+                    gap: '8px',
+                  },
+                  organizationSwitcherTriggerIcon: { color: C.text3 },
+                  organizationPreviewTextContainer: { color: C.text2 },
+                }
+              }}
+            />
           </div>
-          <button onClick={onLogout} style={{ width:'100%', padding:'6px', background:'rgba(240,106,64,0.08)', border:`0.5px solid rgba(240,106,64,0.2)`, borderRadius:6, color:C.coral, fontSize:11, cursor:'pointer' }}>
-            → Back to Home
-          </button>
+
+          {/* Agent status strip */}
+          <div style={{ padding:'8px 12px', borderBottom:`0.5px solid ${C.border}`, display:'flex', gap:6, flexWrap:'wrap' }}>
+            {AGENTS.map(a => (
+              <div key={a.id} title={`${a.name} — ${a.role}`} style={{ width:22, height:22, borderRadius:'50%', background:a.bg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, cursor:'default' }}>
+                {a.emoji}
+              </div>
+            ))}
+            <span style={{ fontSize:10, color:C.teal, marginLeft:4, alignSelf:'center' }}>5 active</span>
+          </div>
+
+          {/* Nav */}
+          <div style={{ flex:1, overflowY:'auto', padding:'4px 8px' }}>
+            {NAV_SECTIONS.map(sec => (
+              <div key={sec.label}>
+                <div style={{ fontSize:9, color:C.text3, letterSpacing:.8, textTransform:'uppercase', padding:'10px 8px 4px' }}>{sec.label}</div>
+                {sec.items.map(n => (
+                  <div key={n.id} onClick={() => setView(n.id)}
+                    style={{ display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:8, cursor:'pointer', marginBottom:1,
+                      background:view===n.id?'rgba(124,109,250,0.12)':'transparent',
+                      color:view===n.id?C.purple2:C.text3,
+                      fontSize:12, fontWeight:view===n.id?600:400,
+                      border:view===n.id?`0.5px solid rgba(124,109,250,0.25)`:'0.5px solid transparent',
+                      transition:'.1s'
+                    }}>
+                    <span style={{ fontSize:13 }}>{n.icon}</span>
+                    <span style={{ flex:1 }}>{n.label}</span>
+                    {n.badge && <span style={{ background:C.coral, color:'#fff', fontSize:9, fontWeight:700, padding:'1px 5px', borderRadius:10 }}>{n.badge}</span>}
+                    {view===n.id && <div style={{ width:5, height:5, borderRadius:'50%', background:C.teal }}/>}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          {/* Brain health */}
+          <div style={{ padding:'10px 12px', borderTop:`0.5px solid ${C.border}` }}>
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
+              <span style={{ fontSize:10, color:C.text3 }}>Brain Health</span>
+              <span style={{ fontSize:10, color:C.teal, fontWeight:600 }}>74%</span>
+            </div>
+            <div style={{ height:3, background:'rgba(255,255,255,0.07)', borderRadius:3 }}>
+              <div style={{ height:'100%', width:'74%', background:'linear-gradient(135deg,#7c6dfa,#22d3b0)', borderRadius:3 }}/>
+            </div>
+          </div>
+        </div>
+
+        {/* MAIN CONTENT */}
+        <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column' }}>
+          {/* Top bar */}
+          <div style={{ height:48, borderBottom:`0.5px solid ${C.border}`, display:'flex', alignItems:'center', padding:'0 20px', gap:12, flexShrink:0, background:C.bg2 }}>
+            <div style={{ flex:1, fontSize:13, color:C.text3 }}>
+              <span style={{ color:C.text2 }}>AI BOS</span>
+              <span style={{ margin:'0 6px' }}>›</span>
+              <span style={{ color:C.purple2 }}>{NAV_SECTIONS.flatMap(s=>s.items).find(i=>i.id===view)?.label}</span>
+            </div>
+            {organization && (
+              <span style={{ fontSize:11, color:C.text3, padding:'3px 8px', background:'rgba(255,255,255,0.04)', borderRadius:20, border:`0.5px solid ${C.border}` }}>
+                🏢 {organization.name}
+              </span>
+            )}
+            <div style={{ display:'flex', alignItems:'center', gap:8, background:'rgba(34,211,176,0.08)', border:`0.5px solid rgba(34,211,176,0.25)`, borderRadius:20, padding:'4px 12px' }}>
+              <div style={{ width:6, height:6, borderRadius:'50%', background:C.teal }}/>
+              <span style={{ fontSize:11, color:C.teal, fontWeight:600 }}>5 agents active</span>
+            </div>
+            <UserButton afterSignOutUrl="/" />
+          </div>
+
+          {/* Page content */}
+          <div style={{ flex:1, overflow:'hidden' }}>
+            {VIEWS[view] || VIEWS['dashboard']}
+          </div>
         </div>
       </div>
-
-      {/* MAIN CONTENT */}
-      <div style={{ flex:1, overflow:'hidden', display:'flex', flexDirection:'column' }}>
-        {/* Top bar */}
-        <div style={{ height:48, borderBottom:`0.5px solid ${C.border}`, display:'flex', alignItems:'center', padding:'0 20px', gap:12, flexShrink:0, background:C.bg2 }}>
-          <div style={{ flex:1, fontSize:13, color:C.text3 }}>
-            <span style={{ color:C.text2 }}>AI BOS</span>
-            <span style={{ margin:'0 6px' }}>›</span>
-            <span style={{ color:C.purple2 }}>{NAV_SECTIONS.flatMap(s=>s.items).find(i=>i.id===view)?.label}</span>
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:8, background:'rgba(34,211,176,0.08)', border:`0.5px solid rgba(34,211,176,0.25)`, borderRadius:20, padding:'4px 12px' }}>
-            <div style={{ width:6, height:6, borderRadius:'50%', background:C.teal, animation:'pulse 2s infinite' }}/>
-            <span style={{ fontSize:11, color:C.teal, fontWeight:600 }}>5 agents active</span>
-          </div>
-          <div style={{ width:28, height:28, borderRadius:'50%', background:'rgba(124,109,250,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:C.purple2, cursor:'pointer' }}>
-            U
-          </div>
-        </div>
-
-        {/* Page content */}
-        <div style={{ flex:1, overflow:'hidden' }}>
-          {VIEWS[view] || VIEWS['dashboard']}
-        </div>
-      </div>
-    </div>
+    </OrgContext.Provider>
   )
 }

@@ -1,39 +1,26 @@
-import { useState } from 'react'
+import { SignInButton, SignUpButton } from '@clerk/clerk-react'
 import { C } from '../design'
 
-export default function Landing({ onLogin, onSignup }: { onLogin: () => void; onSignup: () => void }) {
-  const [authView, setAuthView] = useState<null|'login'|'signup'>(null)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [company, setCompany] = useState('')
-  const [loading, setLoading] = useState(false)
-
-  const handleAuth = async () => {
-    setLoading(true)
-    await new Promise(r => setTimeout(r, 800))
-    setLoading(false)
-    authView === 'signup' ? onSignup() : onLogin()
-  }
-
+export default function Landing() {
   const s: Record<string,any> = {
     nav: { position:'fixed',top:0,left:0,right:0,zIndex:100,padding:'0 40px',height:64,display:'flex',alignItems:'center',justifyContent:'space-between',background:'rgba(10,10,15,0.9)',backdropFilter:'blur(20px)',borderBottom:`0.5px solid ${C.border}` },
     logo: { display:'flex',alignItems:'center',gap:10 },
-    logoIcon: { width:32,height:32,background:C.grad,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:800,color:'#fff' },
+    logoIcon: { width:32,height:32,background:'linear-gradient(135deg,#7c6dfa,#22d3b0)',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:800,color:'#fff' },
     navLinks: { display:'flex',gap:32,fontSize:14,color:C.text2 },
     hero: { minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',padding:'120px 24px 80px',position:'relative',overflow:'hidden' },
     glow1: { position:'absolute',width:800,height:800,borderRadius:'50%',background:'radial-gradient(circle,rgba(124,109,250,0.12) 0%,transparent 70%)',top:'50%',left:'50%',transform:'translate(-50%,-60%)',pointerEvents:'none' },
     glow2: { position:'absolute',width:400,height:400,borderRadius:'50%',background:'radial-gradient(circle,rgba(34,211,176,0.08) 0%,transparent 70%)',top:'40%',right:'10%',pointerEvents:'none' },
     badge: { display:'inline-flex',alignItems:'center',gap:8,padding:'6px 14px',background:'rgba(124,109,250,0.12)',border:'0.5px solid rgba(124,109,250,0.3)',borderRadius:100,fontSize:13,fontWeight:500,color:C.purple2,marginBottom:32 },
-    dot: { width:6,height:6,background:C.teal,borderRadius:'50%',animation:'pulse 2s infinite' },
+    dot: { width:6,height:6,background:C.teal,borderRadius:'50%' },
     h1: { fontSize:'clamp(40px,7vw,80px)',fontWeight:800,lineHeight:1.05,letterSpacing:-2,marginBottom:24,maxWidth:900 },
-    grad: { background:C.grad,WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text' },
+    grad: { background:'linear-gradient(135deg,#7c6dfa 0%,#22d3b0 100%)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text' },
     sub: { fontSize:'clamp(16px,2vw,20px)',color:C.text2,maxWidth:600,marginBottom:48,lineHeight:1.7,fontWeight:400 },
     ctas: { display:'flex',gap:16,alignItems:'center',flexWrap:'wrap',justifyContent:'center',marginBottom:64 },
     btnPrimary: { padding:'14px 32px',background:C.purple,borderRadius:10,fontSize:16,fontWeight:600,color:'#fff',cursor:'pointer',border:'none',display:'flex',alignItems:'center',gap:8 },
     btnOutline: { padding:'14px 32px',border:`0.5px solid ${C.border2}`,borderRadius:10,fontSize:16,fontWeight:500,color:C.text2,cursor:'pointer',background:'transparent' },
     statsRow: { display:'flex',gap:48,justifyContent:'center',flexWrap:'wrap' },
-    statItem: { textAlign:'center' as 'center' },
-    statNum: { fontSize:28,fontWeight:700,letterSpacing:-1,background:C.grad,WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text' },
+    statItem: { textAlign:'center' as const },
+    statNum: { fontSize:28,fontWeight:700,letterSpacing:-1,background:'linear-gradient(135deg,#7c6dfa,#22d3b0)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text' },
     statLabel: { fontSize:13,color:C.text3,marginTop:2 },
   }
 
@@ -69,8 +56,16 @@ export default function Landing({ onLogin, onSignup }: { onLogin: () => void; on
           ))}
         </div>
         <div style={{ display:'flex', gap:12, alignItems:'center' }}>
-          <button onClick={() => setAuthView('login')} style={{ padding:'8px 16px', border:`0.5px solid ${C.border2}`, borderRadius:8, fontSize:14, fontWeight:500, color:C.text2, cursor:'pointer', background:'transparent' }}>Log in</button>
-          <button onClick={() => setAuthView('signup')} style={{ padding:'9px 20px', background:C.purple, borderRadius:8, fontSize:14, fontWeight:600, color:'#fff', cursor:'pointer', border:'none' }}>Start Free Trial</button>
+          <SignInButton mode="modal">
+            <button style={{ padding:'8px 16px', border:`0.5px solid ${C.border2}`, borderRadius:8, fontSize:14, fontWeight:500, color:C.text2, cursor:'pointer', background:'transparent' }}>
+              Log in
+            </button>
+          </SignInButton>
+          <SignUpButton mode="modal">
+            <button style={{ padding:'9px 20px', background:C.purple, borderRadius:8, fontSize:14, fontWeight:600, color:'#fff', cursor:'pointer', border:'none' }}>
+              Start Free Trial
+            </button>
+          </SignUpButton>
         </div>
       </nav>
 
@@ -91,12 +86,16 @@ export default function Landing({ onLogin, onSignup }: { onLogin: () => void; on
           They work 24/7, never call in sick, and get smarter every day.
         </p>
         <div style={s.ctas}>
-          <button onClick={() => setAuthView('signup')} style={s.btnPrimary}>
-            🚀 Start Free Trial
-          </button>
-          <button onClick={onLogin} style={s.btnOutline}>
-            Watch Demo →
-          </button>
+          <SignUpButton mode="modal">
+            <button style={s.btnPrimary}>
+              🚀 Start Free Trial
+            </button>
+          </SignUpButton>
+          <SignInButton mode="modal">
+            <button style={s.btnOutline}>
+              Watch Demo →
+            </button>
+          </SignInButton>
         </div>
         <div style={s.statsRow}>
           {[{num:'200+',label:'Businesses running on AI BOS'},{num:'$47K',label:'Avg MRR increase in 90 days'},{num:'74%',label:'Tasks automated on average'},{num:'24/7',label:'AI employees always working'}].map(stat => (
@@ -120,7 +119,7 @@ export default function Landing({ onLogin, onSignup }: { onLogin: () => void; on
           <div style={{ display:'grid', gridTemplateColumns:'200px 1fr', minHeight:360 }}>
             <div style={{ background:C.bg2, borderRight:`0.5px solid ${C.border}`, padding:16 }}>
               <div style={{ fontSize:13, fontWeight:700, marginBottom:20, display:'flex', alignItems:'center', gap:8 }}>
-                <span style={{ width:22, height:22, background:C.grad, borderRadius:5, display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:800, color:'#fff' }}>B</span>
+                <span style={{ width:22, height:22, background:'linear-gradient(135deg,#7c6dfa,#22d3b0)', borderRadius:5, display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:800, color:'#fff' }}>B</span>
                 AI BOS
               </div>
               {['⚡ Command Center','⬛ Dashboard','📊 Sales Hub','📣 Marketing Hub','🎧 Support Hub','💰 Finance Hub'].map((item, i) => (
@@ -208,9 +207,11 @@ export default function Landing({ onLogin, onSignup }: { onLogin: () => void; on
                     </div>
                   ))}
                 </div>
-                <button onClick={() => setAuthView('signup')} style={{ width:'100%', padding:'12px', background:plan.highlight?C.purple:'rgba(255,255,255,0.05)', border:`0.5px solid ${plan.highlight?'transparent':C.border2}`, borderRadius:9, fontSize:14, fontWeight:600, color:'#fff', cursor:'pointer' }}>
-                  Get Started →
-                </button>
+                <SignUpButton mode="modal">
+                  <button style={{ width:'100%', padding:'12px', background:plan.highlight?C.purple:'rgba(255,255,255,0.05)', border:`0.5px solid ${plan.highlight?'transparent':C.border2}`, borderRadius:9, fontSize:14, fontWeight:600, color:'#fff', cursor:'pointer' }}>
+                    Get Started →
+                  </button>
+                </SignUpButton>
               </div>
             ))}
           </div>
@@ -223,9 +224,11 @@ export default function Landing({ onLogin, onSignup }: { onLogin: () => void; on
           <h2 style={{ fontSize:'clamp(32px,5vw,56px)', fontWeight:800, letterSpacing:-2, marginBottom:24, lineHeight:1.05 }}>Your competitors are already<br/><span style={s.grad}>hiring AI employees.</span></h2>
           <p style={{ fontSize:16, color:C.text2, marginBottom:48, lineHeight:1.7 }}>Every day you wait is a day your AI-powered competitors get further ahead. Start your free trial — no credit card required.</p>
           <div style={{ display:'flex', gap:16, justifyContent:'center', flexWrap:'wrap' }}>
-            <button onClick={() => setAuthView('signup')} style={{ ...s.btnPrimary, fontSize:18, padding:'16px 40px' }}>
-              🚀 Start Free Trial — No Card Needed
-            </button>
+            <SignUpButton mode="modal">
+              <button style={{ ...s.btnPrimary, fontSize:18, padding:'16px 40px' }}>
+                🚀 Start Free Trial — No Card Needed
+              </button>
+            </SignUpButton>
           </div>
         </div>
       </section>
@@ -234,7 +237,7 @@ export default function Landing({ onLogin, onSignup }: { onLogin: () => void; on
       <footer style={{ borderTop:`0.5px solid ${C.border}`, padding:'40px 24px', background:C.bg2 }}>
         <div style={{ maxWidth:1100, margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:20 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <div style={{ width:28, height:28, background:C.grad, borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:'#fff' }}>B</div>
+            <div style={{ width:28, height:28, background:'linear-gradient(135deg,#7c6dfa,#22d3b0)', borderRadius:7, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, color:'#fff' }}>B</div>
             <span style={{ fontWeight:700, fontSize:15 }}>AI BOS</span>
             <span style={{ fontSize:12, color:C.text3, marginLeft:8 }}>© 2026 AI BOS Inc.</span>
           </div>
@@ -243,43 +246,6 @@ export default function Landing({ onLogin, onSignup }: { onLogin: () => void; on
           </div>
         </div>
       </footer>
-
-      {/* AUTH MODAL */}
-      {authView && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:200, padding:20 }} onClick={() => setAuthView(null)}>
-          <div style={{ background:C.bg2, border:`0.5px solid rgba(124,109,250,0.4)`, borderRadius:16, padding:32, maxWidth:400, width:'100%' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24 }}>
-              <div style={{ fontSize:20, fontWeight:800 }}>{authView === 'signup' ? '🚀 Start Free Trial' : '👋 Welcome back'}</div>
-              <button onClick={() => setAuthView(null)} style={{ background:'none', border:'none', color:C.text3, cursor:'pointer', fontSize:20 }}>✕</button>
-            </div>
-            <div style={{ display:'flex', gap:4, marginBottom:24, background:C.bg3, borderRadius:10, padding:4 }}>
-              {(['login','signup'] as const).map(t => (
-                <button key={t} onClick={() => setAuthView(t)} style={{ flex:1, padding:'8px', borderRadius:7, border:'none', background:authView===t?C.bg2:'transparent', color:authView===t?C.text:C.text3, fontSize:13, fontWeight:authView===t?600:400, cursor:'pointer' }}>
-                  {t === 'login' ? 'Sign In' : 'Sign Up'}
-                </button>
-              ))}
-            </div>
-            {authView === 'signup' && (
-              <div style={{ marginBottom:14 }}>
-                <div style={{ fontSize:12, color:C.text2, marginBottom:6 }}>Company name</div>
-                <input value={company} onChange={e => setCompany(e.target.value)} placeholder="Acme Inc." style={{ width:'100%', padding:'10px 14px', background:'rgba(255,255,255,0.05)', border:`0.5px solid ${C.border2}`, borderRadius:8, color:C.text, fontSize:14, outline:'none' }}/>
-              </div>
-            )}
-            <div style={{ marginBottom:14 }}>
-              <div style={{ fontSize:12, color:C.text2, marginBottom:6 }}>Work email</div>
-              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="you@company.com" type="email" style={{ width:'100%', padding:'10px 14px', background:'rgba(255,255,255,0.05)', border:`0.5px solid ${C.border2}`, borderRadius:8, color:C.text, fontSize:14, outline:'none' }}/>
-            </div>
-            <div style={{ marginBottom:20 }}>
-              <div style={{ fontSize:12, color:C.text2, marginBottom:6 }}>Password</div>
-              <input value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" type="password" style={{ width:'100%', padding:'10px 14px', background:'rgba(255,255,255,0.05)', border:`0.5px solid ${C.border2}`, borderRadius:8, color:C.text, fontSize:14, outline:'none' }}/>
-            </div>
-            <button onClick={handleAuth} disabled={loading} style={{ width:'100%', padding:'12px', background:C.purple, border:'none', borderRadius:9, fontSize:15, fontWeight:600, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-              {loading ? <><span style={{ width:14, height:14, border:'2px solid rgba(255,255,255,0.2)', borderTopColor:'#fff', borderRadius:'50%', animation:'spin .7s linear infinite', display:'inline-block' }}/> Setting up…</> : authView === 'signup' ? '🚀 Start Free Trial' : '→ Sign In'}
-            </button>
-            {authView === 'signup' && <p style={{ fontSize:11, color:C.text3, textAlign:'center', marginTop:12 }}>Free 14-day trial · No credit card required</p>}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

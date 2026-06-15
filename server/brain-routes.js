@@ -16,7 +16,11 @@ import {
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
-async function processDocument(docId, text, docType) {
+function getOrgId(req) {
+  return req.auth?.orgId || req.headers['x-org-id'] || 'default';
+}
+
+async function processDocument(docId, text, docType, orgId) {
   try {
     const chunks = splitIntoChunks(text);
     if (!chunks.length) throw new Error('No text content extracted from document.');
@@ -31,14 +35,14 @@ async function processDocument(docId, text, docType) {
         const points = embeddings.map((vec, i) => ({
           id: uuidv4().replace(/-/g, '').slice(0, 16),
           vector: vec,
-          payload: { document_id: docId, chunk_index: i, content: chunks[i].content, type: docType }
+          payload: { document_id: docId, chunk_index: i, content: chunks[i].content, type: docType, org_id: orgId }
         }));
         await upsertVectors(points);
         enrichedChunks = chunks.map((c, i) => ({ ...c, qdrantId: points[i].id }));
       }
     }
 
-    await insertChunks(docId, enrichedChunks);
+    await insertChunks(docId, enrichedChunks, orgId);
     await updateDocumentReady(docId, enrichedChunks.length);
   } catch (e) {
     console.error('processDocument error:', e.message);
@@ -48,7 +52,8 @@ async function processDocument(docId, text, docType) {
 
 router.get('/status', async (req, res) => {
   try {
-    const stats = await getStats();
+    const orgId = getOrgId(req);
+    const stats = await getStats(orgId);
     res.json({
       db: true,
       embeddings: isEmbeddingsEnabled(),
@@ -62,7 +67,8 @@ router.get('/status', async (req, res) => {
 
 router.get('/documents', async (req, res) => {
   try {
-    const docs = await listDocuments();
+    const orgId = getOrgId(req);
+    const docs = await listDocuments(orgId);
     res.json({ documents: docs });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -75,15 +81,16 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   if (!file) return res.status(400).json({ error: 'No file provided.' });
   if (!title) return res.status(400).json({ error: 'Document title required.' });
 
+  const orgId = getOrgId(req);
   try {
     const doc = await createDocument({
-      title,
-      type: type || 'other',
-      filename: file.originalname,
-      sizeBytes: file.size
+      title, type: type || 'other',
+      filename: file.originalname, sizeBytes: file.size, orgId
     });
     res.json({ document: doc, message: 'Upload received, processing in background…' });
-    processDocument(doc.id, await parseFile(file.buffer, file.mimetype, file.originalname), type || 'other').catch(() => {});
+    parseFile(file.buffer, file.mimetype, file.originalname)
+      .then(text => processDocument(doc.id, text, type || 'other', orgId))
+      .catch(() => {});
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -93,15 +100,14 @@ router.post('/add', express.json(), async (req, res) => {
   const { title, type, content } = req.body;
   if (!title || !content) return res.status(400).json({ error: 'title and content required.' });
 
+  const orgId = getOrgId(req);
   try {
     const doc = await createDocument({
-      title,
-      type: type || 'other',
-      filename: null,
-      sizeBytes: Buffer.byteLength(content, 'utf-8')
+      title, type: type || 'other', filename: null,
+      sizeBytes: Buffer.byteLength(content, 'utf-8'), orgId
     });
     res.json({ document: doc, message: 'Content received, processing in background…' });
-    processDocument(doc.id, content, type || 'other').catch(() => {});
+    processDocument(doc.id, content, type || 'other', orgId).catch(() => {});
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -109,9 +115,13 @@ router.post('/add', express.json(), async (req, res) => {
 
 router.delete('/documents/:id', async (req, res) => {
   const { id } = req.params;
+  const orgId = getOrgId(req);
   try {
     const doc = await getDocument(id);
     if (!doc) return res.status(404).json({ error: 'Document not found.' });
+    if (doc.org_id !== orgId && orgId !== 'default') {
+      return res.status(403).json({ error: 'Access denied.' });
+    }
     if (isQdrantEnabled()) await deleteByDocumentId(id);
     await deleteDocument(id);
     res.json({ success: true });
@@ -123,6 +133,7 @@ router.delete('/documents/:id', async (req, res) => {
 router.post('/search', express.json(), async (req, res) => {
   const { query, limit = 8 } = req.body;
   if (!query) return res.status(400).json({ error: 'query required.' });
+  const orgId = getOrgId(req);
 
   try {
     let results = [];
@@ -133,7 +144,7 @@ router.post('/search', express.json(), async (req, res) => {
         const hits = await searchVectors(qVec, limit);
         if (hits.length) {
           const qdrantIds = hits.map(h => String(h.id));
-          const chunks = await getChunksByQdrantIds(qdrantIds);
+          const chunks = await getChunksByQdrantIds(qdrantIds, orgId);
           const chunkMap = Object.fromEntries(chunks.map(c => [c.qdrant_id, c]));
           results = hits
             .map(h => {
@@ -147,7 +158,7 @@ router.post('/search', express.json(), async (req, res) => {
     }
 
     if (!results.length) {
-      const rows = await fullTextSearch(query, limit);
+      const rows = await fullTextSearch(query, orgId, limit);
       results = rows.map(r => ({ content: r.content, score: r.score, doc_title: r.doc_title, doc_type: r.doc_type }));
     }
 
@@ -160,6 +171,7 @@ router.post('/search', express.json(), async (req, res) => {
 router.post('/context', express.json(), async (req, res) => {
   const { query, limit = 5 } = req.body;
   if (!query) return res.status(400).json({ error: 'query required.' });
+  const orgId = getOrgId(req);
 
   try {
     let results = [];
@@ -170,7 +182,7 @@ router.post('/context', express.json(), async (req, res) => {
         const hits = await searchVectors(qVec, limit, 0.25);
         if (hits.length) {
           const qdrantIds = hits.map(h => String(h.id));
-          const chunks = await getChunksByQdrantIds(qdrantIds);
+          const chunks = await getChunksByQdrantIds(qdrantIds, orgId);
           const chunkMap = Object.fromEntries(chunks.map(c => [c.qdrant_id, c]));
           results = hits.map(h => chunkMap[String(h.id)]?.content).filter(Boolean);
         }
@@ -178,7 +190,7 @@ router.post('/context', express.json(), async (req, res) => {
     }
 
     if (!results.length) {
-      const rows = await fullTextSearch(query, limit);
+      const rows = await fullTextSearch(query, orgId, limit);
       results = rows.map(r => r.content);
     }
 

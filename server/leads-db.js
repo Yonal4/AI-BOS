@@ -1,0 +1,93 @@
+import pg from 'pg'
+const { Pool } = pg
+
+let pool = null
+function getPool() {
+  if (!pool) pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL?.includes('localhost') ? false : { rejectUnauthorized: false }
+  })
+  return pool
+}
+
+export async function createLead({ orgId, name, email, company, source, status, notes, assignedAgent, value, score }) {
+  const { rows } = await getPool().query(
+    `INSERT INTO leads (org_id,name,email,company,source,status,notes,assigned_agent,value,score)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+    [orgId||'default', name, email||null, company||null, source||'Manual',
+     status||'New', notes||null, assignedAgent||'aria', value||0, score||50]
+  )
+  return rows[0]
+}
+
+export async function listLeads(orgId, { status, search } = {}) {
+  let q = `SELECT * FROM leads WHERE org_id=$1`
+  const params = [orgId||'default']
+  if (status) { params.push(status); q += ` AND status=$${params.length}` }
+  if (search) { params.push(`%${search}%`); q += ` AND (name ILIKE $${params.length} OR company ILIKE $${params.length} OR email ILIKE $${params.length})` }
+  q += ` ORDER BY created_at DESC`
+  const { rows } = await getPool().query(q, params)
+  return rows
+}
+
+export async function getLead(id) {
+  const { rows } = await getPool().query(`SELECT * FROM leads WHERE id=$1`, [id])
+  return rows[0] || null
+}
+
+export async function updateLead(id, fields) {
+  const allowed = ['name','email','company','source','status','notes','assigned_agent','value','score']
+  const sets = [], params = []
+  for (const [k, v] of Object.entries(fields)) {
+    const col = k.replace(/([A-Z])/g, '_$1').toLowerCase()
+    if (allowed.includes(col)) { params.push(v); sets.push(`${col}=$${params.length}`) }
+  }
+  if (!sets.length) return getLead(id)
+  params.push(id)
+  const { rows } = await getPool().query(
+    `UPDATE leads SET ${sets.join(',')}, updated_at=NOW() WHERE id=$${params.length} RETURNING *`,
+    params
+  )
+  return rows[0]
+}
+
+export async function deleteLead(id) {
+  await getPool().query(`DELETE FROM leads WHERE id=$1`, [id])
+}
+
+export async function getLeadStats(orgId) {
+  const { rows } = await getPool().query(
+    `SELECT
+       COUNT(*)::int                                               AS total,
+       COUNT(*) FILTER (WHERE status='New')::int                  AS new_count,
+       COUNT(*) FILTER (WHERE status='Qualified')::int            AS qualified,
+       COUNT(*) FILTER (WHERE status='Contacted')::int            AS contacted,
+       COUNT(*) FILTER (WHERE status='Proposal Sent')::int        AS proposal_sent,
+       COUNT(*) FILTER (WHERE status='Won')::int                  AS won,
+       COUNT(*) FILTER (WHERE status='Lost')::int                 AS lost,
+       COALESCE(SUM(value) FILTER (WHERE status NOT IN ('Lost')),0)::int  AS pipeline_value,
+       COALESCE(SUM(value) FILTER (WHERE status='Won'),0)::int           AS won_value,
+       ROUND(AVG(score))::int                                      AS avg_score
+     FROM leads WHERE org_id=$1`,
+    [orgId||'default']
+  )
+  return rows[0]
+}
+
+export async function seedSampleLeads(orgId) {
+  const { rows } = await getPool().query(`SELECT COUNT(*) FROM leads WHERE org_id=$1`, [orgId])
+  if (parseInt(rows[0].count) > 0) return
+  const samples = [
+    ['Jordan Blake',  'jordan@techflow.io',  'TechFlow',   'LinkedIn',   'Qualified',     'Intro call went well. Very interested in the Sales Hub.', 'aria', 1999, 94],
+    ['Sarah Chen',    'sarah@nexusai.co',    'Nexus AI',   'Outbound',   'Proposal Sent', 'Sent Growth plan proposal. Awaiting decision from CEO.',   'aria', 1999, 87],
+    ['Marcus Reid',   'm.reid@flowstack.com','FlowStack',  'Website',    'Contacted',     'Downloaded whitepaper. Followed up via email.',           'aria', 799,  82],
+    ['Priya Sharma',  'priya@orbis.io',      'Orbis Labs', 'Referral',   'Qualified',     'Referred by Jordan. Strong fit for Operations Hub.',      'aria', 1999, 91],
+    ['Alex Kovacs',   'alex@clearpath.ai',   'Clearpath',  'Cold Email', 'New',           'Cold outreach. No reply yet.',                            'aria', 299,  76],
+    ['Mei Lin',       'mei@vantage.io',      'Vantage',    'LinkedIn',   'Won',           'Signed Team plan. Onboarding scheduled.',                 'aria', 1999, 95],
+    ['David Torres',  'd.torres@synapse.com','Synapse',    'Website',    'Lost',          'Budget constraints. Follow up in Q2.',                    'aria', 799,  60],
+    ['Emma Walsh',    'emma@growthco.io',    'GrowthCo',   'Referral',   'Contacted',     'Initial discovery call booked for next week.',            'aria', 1999, 83],
+  ]
+  for (const [name,email,company,source,status,notes,agent,value,score] of samples) {
+    await createLead({ orgId, name, email, company, source, status, notes, assignedAgent:agent, value, score })
+  }
+}

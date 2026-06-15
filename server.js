@@ -3,7 +3,8 @@ import cors from 'cors';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
-import brainRouter from './server/brain-routes.js';
+import brainRouter from './server/brain-routes.js'
+import leadsRouter from './server/leads-routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -16,7 +17,9 @@ app.use(express.json({ limit: '10mb' }));
 if (process.env.CLERK_SECRET_KEY) {
   try {
     const { clerkMiddleware } = await import('@clerk/express');
-    app.use(clerkMiddleware());
+    app.use(clerkMiddleware({
+      publishableKey: process.env.VITE_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PUBLISHABLE_KEY,
+    }));
     console.log('Clerk middleware active');
   } catch (e) {
     console.warn('Clerk middleware failed to load:', e.message);
@@ -62,6 +65,7 @@ app.post('/api/ai', async (req, res) => {
 });
 
 app.use('/api/brain', brainRouter);
+app.use('/api/leads', leadsRouter);
 
 const distPath = path.join(__dirname, 'dist');
 if (fs.existsSync(distPath)) {

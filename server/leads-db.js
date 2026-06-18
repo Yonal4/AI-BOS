@@ -10,7 +10,33 @@ function getPool() {
   return pool
 }
 
+let leadsSchemaReady = false
+async function ensureLeadsSchema() {
+  if (leadsSchemaReady) return
+  await getPool().query(`
+    CREATE TABLE IF NOT EXISTS leads (
+      id BIGSERIAL PRIMARY KEY,
+      org_id TEXT NOT NULL DEFAULT 'default',
+      name TEXT NOT NULL,
+      email TEXT,
+      company TEXT,
+      source TEXT NOT NULL DEFAULT 'Manual',
+      status TEXT NOT NULL DEFAULT 'New',
+      notes TEXT,
+      assigned_agent TEXT NOT NULL DEFAULT 'aria',
+      value INTEGER NOT NULL DEFAULT 0,
+      score INTEGER NOT NULL DEFAULT 50,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_leads_org_status ON leads (org_id, status);
+    CREATE INDEX IF NOT EXISTS idx_leads_org_updated ON leads (org_id, updated_at DESC);
+  `)
+  leadsSchemaReady = true
+}
+
 export async function createLead({ orgId, name, email, company, source, status, notes, assignedAgent, value, score }) {
+  await ensureLeadsSchema()
   const { rows } = await getPool().query(
     `INSERT INTO leads (org_id,name,email,company,source,status,notes,assigned_agent,value,score)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
@@ -21,6 +47,7 @@ export async function createLead({ orgId, name, email, company, source, status, 
 }
 
 export async function listLeads(orgId, { status, search } = {}) {
+  await ensureLeadsSchema()
   let q = `SELECT * FROM leads WHERE org_id=$1`
   const params = [orgId||'default']
   if (status) { params.push(status); q += ` AND status=$${params.length}` }
@@ -31,11 +58,13 @@ export async function listLeads(orgId, { status, search } = {}) {
 }
 
 export async function getLead(id) {
+  await ensureLeadsSchema()
   const { rows } = await getPool().query(`SELECT * FROM leads WHERE id=$1`, [id])
   return rows[0] || null
 }
 
 export async function updateLead(id, fields) {
+  await ensureLeadsSchema()
   const allowed = ['name','email','company','source','status','notes','assigned_agent','value','score']
   const sets = [], params = []
   for (const [k, v] of Object.entries(fields)) {
@@ -52,10 +81,12 @@ export async function updateLead(id, fields) {
 }
 
 export async function deleteLead(id) {
+  await ensureLeadsSchema()
   await getPool().query(`DELETE FROM leads WHERE id=$1`, [id])
 }
 
 export async function getLeadStats(orgId) {
+  await ensureLeadsSchema()
   const { rows } = await getPool().query(
     `SELECT
        COUNT(*)::int                                               AS total,
@@ -75,6 +106,7 @@ export async function getLeadStats(orgId) {
 }
 
 export async function seedSampleLeads(orgId) {
+  await ensureLeadsSchema()
   const { rows } = await getPool().query(`SELECT COUNT(*) FROM leads WHERE org_id=$1`, [orgId])
   if (parseInt(rows[0].count) > 0) return
   const samples = [

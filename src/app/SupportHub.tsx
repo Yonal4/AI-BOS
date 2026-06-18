@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { C } from '../design'
 import { Card, Btn, Badge, Pill, Spin, KpiGrid } from '../components/ui'
 import { callAI, callAIWithHistory } from '../utils/ai'
+import { AgentTask, SharedMemory, getAgentTasks, getSharedMemory } from '../utils/collaboration'
+import { useOrgId } from '../context/OrgContext'
 
 const TICKETS = [
   { id:'T-001', customer:'Nexus AI',   email:'sarah@nexusai.co',     subject:'AI agents stopped sending emails after Slack integration', status:'Open',        priority:'High',   created:'2h ago',  ai:true  },
@@ -14,6 +16,7 @@ const TICKETS = [
 const MARCUS_SYS = `You are Marcus, AI Customer Support specialist for AI BOS. Empathetic, solution-focused, proactive about churn. Write a professional support response that: 1) acknowledges the issue empathetically, 2) provides clear step-by-step resolution, 3) ends with confidence-restoring statement. AI BOS is an AI Business Operating System.`
 
 export default function SupportHub() {
+  const orgId = useOrgId()
   const [view, setView] = useState('tickets')
   const [tickets, setTickets] = useState(TICKETS)
   const [selected, setSelected] = useState<any>(null)
@@ -22,6 +25,13 @@ export default function SupportHub() {
   const [chat, setChat] = useState([{ role:'assistant', text:"Hi! I'm Marcus, your AI Support agent. I'm here 24/7. What can I help you with today?" }])
   const [chatInput, setChatInput] = useState('')
   const [chatLoading, setChatLoading] = useState(false)
+  const [supportTasks, setSupportTasks] = useState<AgentTask[]>([])
+  const [supportMemory, setSupportMemory] = useState<SharedMemory[]>([])
+
+  useEffect(() => {
+    getAgentTasks('support', orgId).then(setSupportTasks).catch(() => {})
+    getSharedMemory('lead', orgId).then(setSupportMemory).catch(() => {})
+  }, [orgId])
 
   const draftReply = async (ticket: typeof TICKETS[0]) => {
     setDrafting(true); setReply('')
@@ -95,6 +105,28 @@ export default function SupportHub() {
             ))}
           </Card>
           <div>
+            <Card style={{ marginBottom:14, border:`0.5px solid rgba(34,211,176,0.25)`, background:'rgba(34,211,176,0.04)' }}>
+              <div style={{ fontSize:12, fontWeight:700, color:C.teal, marginBottom:8 }}>Marcus Handoff Context</div>
+              {supportTasks.length === 0 ? (
+                <div style={{ fontSize:12, color:C.text3 }}>No Sales handoffs yet.</div>
+              ) : supportTasks.slice(0,3).map(t => {
+                const ctx = supportMemory.find(m => m.memory_key === `lead:${t.payload?.leadId}:support_context`)
+                return (
+                  <div key={t.id} style={{ padding:'9px 0', borderTop:`0.5px solid ${C.border}` }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', gap:8 }}>
+                      <span style={{ fontSize:12, fontWeight:600, textTransform:'capitalize' }}>{t.task_type.replace(/_/g,' ')}</span>
+                      <Badge type={t.status==='completed'?'success':'warning'}>{t.status}</Badge>
+                    </div>
+                    <div style={{ fontSize:10, color:C.text3, marginTop:2 }}>Workflow {t.workflow_id}</div>
+                    {ctx && (
+                      <div style={{ marginTop:6, fontSize:11, color:C.text2, lineHeight:1.6 }}>
+                        {ctx.value?.lead?.name} from {ctx.value?.lead?.company || 'unknown company'} came through {ctx.value?.campaign?.name}. Marcus has the campaign and outreach history before a ticket is opened.
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </Card>
             {selected ? (
               <Card>
                 <div style={{ fontSize:12, fontWeight:700, color:C.teal, marginBottom:10 }}>🎧 Marcus's Reply Draft</div>

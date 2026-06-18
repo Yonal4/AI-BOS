@@ -3,6 +3,7 @@ import { C } from '../design'
 import { Card, Btn, Badge, Spin } from '../components/ui'
 import { callAI } from '../utils/ai'
 import { useOrgId } from '../context/OrgContext'
+import { AgentTask, getAgentTasks } from '../utils/collaboration'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 const STAGES = ['New','Qualified','Contacted','Proposal Sent','Won','Lost'] as const
@@ -330,6 +331,7 @@ export default function SalesHub() {
   const [filterStage, setFilterStage] = useState<Stage|'All'>('All')
   const [selected,    setSelected]    = useState<Lead|null>(null)
   const [showModal,   setShowModal]   = useState(false)
+  const [salesTasks,   setSalesTasks]  = useState<AgentTask[]>([])
 
   const orgHeaders = useCallback((): Record<string,string> =>
     orgId ? { 'x-org-id': orgId } : {}, [orgId])
@@ -354,6 +356,9 @@ export default function SalesHub() {
   }, [api])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+  useEffect(() => {
+    getAgentTasks('sales', orgId).then(setSalesTasks).catch(() => {})
+  }, [orgId, leads.length])
 
   const createLead = async (data: Partial<Lead>) => {
     await api('/', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) })
@@ -509,6 +514,23 @@ export default function SalesHub() {
 
           /* ── OUTREACH ── */
           <div style={{ maxWidth:800 }}>
+            <Card style={{ marginBottom:14, border:`0.5px solid rgba(124,109,250,0.25)`, background:'rgba(124,109,250,0.04)' }}>
+              <div style={{ fontSize:14,fontWeight:700,marginBottom:4,color:C.purple2 }}>Aria's Delegated Tasks</div>
+              <div style={{ fontSize:12,color:C.text2,marginBottom:12 }}>Tasks received from Lexi through the shared workflow engine.</div>
+              {salesTasks.length === 0 ? (
+                <div style={{ fontSize:12,color:C.text3 }}>No delegated Sales tasks yet.</div>
+              ) : salesTasks.slice(0,4).map(t => (
+                <div key={t.id} style={{ display:'flex',justifyContent:'space-between',gap:10,padding:'9px 0',borderTop:`0.5px solid ${C.border}` }}>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:12,fontWeight:600,textTransform:'capitalize' }}>{t.task_type.replace(/_/g,' ')}</div>
+                    <div style={{ fontSize:10,color:C.text3 }}>From {t.from_agent} · Workflow {t.workflow_id}</div>
+                    {t.result?.outreach && <div style={{ marginTop:6,fontSize:11,lineHeight:1.6,color:C.text2,whiteSpace:'pre-wrap' }}>{t.result.outreach}</div>}
+                    {t.result?.error && <div style={{ marginTop:6,fontSize:11,color:C.coral }}>{t.result.error}</div>}
+                  </div>
+                  <Badge type={t.status==='completed'?'success':t.status==='failed'?'danger':'warning'}>{t.status}</Badge>
+                </div>
+              ))}
+            </Card>
             <Card style={{ marginBottom:14 }}>
               <div style={{ fontSize:14,fontWeight:700,marginBottom:4 }}>📊 Aria — Bulk AI Outreach</div>
               <div style={{ fontSize:12,color:C.text2,marginBottom:16 }}>Aria writes personalized emails for up to 5 leads in a selected stage.</div>

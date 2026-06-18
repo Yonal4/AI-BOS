@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { C } from '../design'
 import { Card, Btn, Badge, Pill, Spin, KpiGrid } from '../components/ui'
 import { callAI } from '../utils/ai'
+import { createCollaborativeCampaign } from '../utils/collaboration'
+import { useOrgId } from '../context/OrgContext'
 
 const LEXI_SYS = `You are Lexi, AI Marketing Manager for AI BOS (AI Business Operating System). Bold, direct, outcome-focused. No fluff. Produce one concrete deliverable — either a LinkedIn post, email subject line list, campaign brief, or ad copy. Make it specific and high-converting.`
 
@@ -13,11 +15,28 @@ const CAMPAIGNS = [
 ]
 
 export default function MarketingHub() {
+  const orgId = useOrgId()
   const [view, setView] = useState('campaigns')
   const [generating, setGenerating] = useState(false)
   const [contentType, setContentType] = useState('linkedin')
   const [prompt, setPrompt] = useState('')
   const [output, setOutput] = useState('')
+  const [showCampaign, setShowCampaign] = useState(false)
+  const [campaignForm, setCampaignForm] = useState({
+    name: '',
+    channel: 'Email',
+    audience: '',
+    offer: '',
+    leadName: '',
+    leadEmail: '',
+    leadCompany: '',
+    leadNotes: '',
+    value: 799,
+    score: 75,
+  })
+  const [workflowResult, setWorkflowResult] = useState<any>(null)
+  const [workflowError, setWorkflowError] = useState('')
+  const [startingWorkflow, setStartingWorkflow] = useState(false)
 
   const generate = async () => {
     if (!prompt.trim() || generating) return
@@ -34,6 +53,37 @@ export default function MarketingHub() {
     } catch(e: any) { setOutput(`Error: ${e.message}`) }
     setGenerating(false)
   }
+
+  const startCollaborativeCampaign = async () => {
+    setStartingWorkflow(true)
+    setWorkflowError('')
+    try {
+      const result = await createCollaborativeCampaign(campaignForm, orgId)
+      setWorkflowResult(result)
+      setShowCampaign(false)
+    } catch (e: any) {
+      setWorkflowError(e.message)
+    }
+    setStartingWorkflow(false)
+  }
+
+  const campaignField = (key: keyof typeof campaignForm, label: string, type = 'text') => (
+    <div style={{ marginBottom:10 }}>
+      <div style={{ fontSize:10, color:C.text3, marginBottom:4, textTransform:'uppercase', letterSpacing:.4 }}>{label}</div>
+      {key === 'leadNotes' ? (
+        <textarea value={String(campaignForm[key])} onChange={e=>setCampaignForm(p=>({...p,[key]:e.target.value}))}
+          rows={3} style={{ width:'100%', padding:'8px 10px', background:'rgba(255,255,255,0.04)', border:`0.5px solid ${C.border2}`, borderRadius:7, color:C.text, fontSize:12, outline:'none', resize:'vertical', fontFamily:'inherit' }}/>
+      ) : key === 'channel' ? (
+        <select value={String(campaignForm[key])} onChange={e=>setCampaignForm(p=>({...p,[key]:e.target.value}))}
+          style={{ width:'100%', padding:'8px 10px', background:'rgba(255,255,255,0.04)', border:`0.5px solid ${C.border2}`, borderRadius:7, color:C.text, fontSize:12, outline:'none' }}>
+          {['Email','LinkedIn','Paid Ads','Webinar','Content'].map(v=><option key={v} value={v}>{v}</option>)}
+        </select>
+      ) : (
+        <input type={type} value={String(campaignForm[key])} onChange={e=>setCampaignForm(p=>({...p,[key]:type==='number'?Number(e.target.value):e.target.value}))}
+          style={{ width:'100%', padding:'8px 10px', background:'rgba(255,255,255,0.04)', border:`0.5px solid ${C.border2}`, borderRadius:7, color:C.text, fontSize:12, outline:'none' }}/>
+      )}
+    </div>
+  )
 
   return (
     <div style={{ flex:1, overflow:'auto', padding:'20px', background:C.bg }}>
@@ -57,8 +107,21 @@ export default function MarketingHub() {
         <div>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
             <span style={{ fontSize:13, fontWeight:600 }}>Active Campaigns</span>
-            <Btn style={{ fontSize:11, padding:'5px 12px' }}>+ New Campaign</Btn>
+            <Btn onClick={() => setShowCampaign(true)} style={{ fontSize:11, padding:'5px 12px' }}>+ New Campaign</Btn>
           </div>
+          {workflowResult && (
+            <Card style={{ marginBottom:12, border:`0.5px solid rgba(34,211,176,0.3)`, background:'rgba(34,211,176,0.04)' }}>
+              <div style={{ fontSize:12, color:workflowResult.workflow?.status==='completed'?C.teal:C.gold, fontWeight:700, marginBottom:6 }}>
+                Collaboration workflow {workflowResult.workflow?.status || 'started'}
+              </div>
+              <div style={{ fontSize:12, color:C.text2, lineHeight:1.6 }}>
+                {workflowResult.workflow?.status==='completed'
+                  ? 'Lexi created the campaign and lead, Aria received the lead and generated outreach, then Marcus received the support context.'
+                  : 'Lexi created the campaign and lead. Aria has the delegated task, but outreach generation needs the AI provider to be available.'}
+              </div>
+              <div style={{ fontSize:10, color:C.text3, marginTop:6 }}>Workflow: {workflowResult.workflow?.id} · Events stored: {workflowResult.events?.length || 0}</div>
+            </Card>
+          )}
           <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
             {CAMPAIGNS.map(c => (
               <Card key={c.id}>
@@ -210,6 +273,40 @@ export default function MarketingHub() {
               </div>
             ))}
           </Card>
+        </div>
+      )}
+
+      {showCampaign && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.62)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}
+          onClick={e=>e.target===e.currentTarget&&setShowCampaign(false)}>
+          <div style={{ width:'100%', maxWidth:620, maxHeight:'90vh', overflow:'auto', background:C.bg2, border:`0.5px solid ${C.border2}`, borderRadius:12, padding:22 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+              <div>
+                <div style={{ fontSize:15, fontWeight:800, color:C.coral }}>Lexi Collaborative Campaign</div>
+                <div style={{ fontSize:11, color:C.text3, marginTop:2 }}>Creates campaign, lead, Sales task, outreach, and Support context.</div>
+              </div>
+              <button onClick={()=>setShowCampaign(false)} style={{ background:'none', border:'none', color:C.text3, fontSize:18, cursor:'pointer' }}>x</button>
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0 12px' }}>
+              {campaignField('name','Campaign name')}
+              {campaignField('channel','Channel')}
+              <div style={{ gridColumn:'1/-1' }}>{campaignField('audience','Audience')}</div>
+              <div style={{ gridColumn:'1/-1' }}>{campaignField('offer','Offer')}</div>
+              {campaignField('leadName','Lead name')}
+              {campaignField('leadCompany','Lead company')}
+              {campaignField('leadEmail','Lead email','email')}
+              {campaignField('value','Deal value','number')}
+              {campaignField('score','Lead score','number')}
+              <div style={{ gridColumn:'1/-1' }}>{campaignField('leadNotes','Lead notes')}</div>
+            </div>
+            {workflowError && <div style={{ color:C.coral, fontSize:12, marginBottom:10 }}>{workflowError}</div>}
+            <div style={{ display:'flex', justifyContent:'flex-end', gap:8 }}>
+              <Btn variant="ghost" onClick={()=>setShowCampaign(false)}>Cancel</Btn>
+              <Btn onClick={startCollaborativeCampaign} disabled={startingWorkflow || !campaignForm.name || !campaignForm.audience || !campaignForm.offer || !campaignForm.leadName} style={{ background:C.coral }}>
+                {startingWorkflow ? <><Spin/>Starting workflow...</> : 'Start Collaboration'}
+              </Btn>
+            </div>
+          </div>
         </div>
       )}
     </div>

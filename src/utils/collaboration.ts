@@ -68,3 +68,18 @@ export async function getRecentEvents(orgId?: string | null): Promise<AgentEvent
   const data = await collaborationApi('/events?limit=30', {}, orgId)
   return data.events || []
 }
+
+export async function getTimelineEvents(filters: {
+  agent?: string
+  eventType?: string
+  search?: string
+  limit?: number
+} = {}, orgId?: string | null): Promise<AgentEvent[]> {
+  const params = new URLSearchParams()
+  if (filters.agent && filters.agent !== 'all') params.set('agent', filters.agent)
+  if (filters.eventType && filters.eventType !== 'all') params.set('eventType', filters.eventType)
+  if (filters.search) params.set('search', filters.search)
+  params.set('limit', String(filters.limit || 100))
+  const data = await collaborationApi(`/events?${params.toString()}`, {}, orgId)
+  return data.events || []
+}

@@ -276,6 +276,15 @@ export async function createCampaignWorkflow(orgId, input) {
     taskType: 'generate_outreach',
     payload: { leadId: lead.id, campaignId: campaign.id }
   })
+  await publishEvent({
+    orgId,
+    workflowId: id,
+    agent: AGENTS.sales,
+    eventType: 'sales.lead.received',
+    entityType: 'lead',
+    entityId: String(lead.id),
+    payload: { taskId: salesTask.id, lead, campaignId: campaign.id }
+  })
 
   try {
     const outreach = await generateOutreach({ lead, campaign })
@@ -382,13 +391,32 @@ export async function getWorkflow(orgId, id) {
   return { workflow, events, tasks, memory }
 }
 
-export async function listEvents(orgId, { workflowId, limit = 100 } = {}) {
+export async function listEvents(orgId, { workflowId, agent, eventType, search, limit = 100 } = {}) {
   await ensureCollaborationSchema()
   const params = [orgId]
   let query = `SELECT * FROM agent_events WHERE org_id=$1`
   if (workflowId) {
     params.push(workflowId)
     query += ` AND workflow_id=$${params.length}`
+  }
+  if (agent && agent !== 'all') {
+    params.push(agent)
+    query += ` AND (agent_id=$${params.length} OR agent_role=$${params.length})`
+  }
+  if (eventType && eventType !== 'all') {
+    params.push(eventType)
+    query += ` AND event_type=$${params.length}`
+  }
+  if (search) {
+    params.push(`%${search}%`)
+    query += ` AND (
+      event_type ILIKE $${params.length}
+      OR agent_id ILIKE $${params.length}
+      OR agent_role ILIKE $${params.length}
+      OR entity_type ILIKE $${params.length}
+      OR entity_id ILIKE $${params.length}
+      OR payload::text ILIKE $${params.length}
+    )`
   }
   params.push(limit)
   query += ` ORDER BY created_at DESC LIMIT $${params.length}`

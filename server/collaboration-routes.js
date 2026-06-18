@@ -31,6 +31,9 @@ router.get('/events', async (req, res) => {
   try {
     const events = await listEvents(getOrgId(req), {
       workflowId: req.query.workflowId,
+      agent: req.query.agent,
+      eventType: req.query.eventType,
+      search: req.query.search,
       limit: Number(req.query.limit || 100)
     })
     res.json({ events })

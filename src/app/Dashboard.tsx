@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { C, AGENTS } from '../design'
 import { Card, Btn, Badge, Pill, SparkLine } from '../components/ui'
+import { AgentEvent, getRecentEvents } from '../utils/collaboration'
+import { useOrgId } from '../context/OrgContext'
 
 const MRR_DATA = [18,22,27,31,38,47]
 
@@ -19,9 +21,15 @@ const APPROVALS = [
 ]
 
 export default function Dashboard({ onNavigate, ownerMode = false }: { onNavigate: (v:string)=>void, ownerMode?: boolean }) {
+  const orgId = useOrgId()
   const [approvals, setApprovals] = useState(APPROVALS)
+  const [events, setEvents] = useState<AgentEvent[]>([])
   const approve = (id: number) => setApprovals(a => a.filter(x => x.id !== id))
   const reject  = (id: number) => setApprovals(a => a.filter(x => x.id !== id))
+
+  useEffect(() => {
+    getRecentEvents(orgId).then(setEvents).catch(() => setEvents([]))
+  }, [orgId])
 
   const AGENT_PERF: Record<string,any> = {
     aria:  { tasks:47, wins:'14 meetings',  rate:92 },
@@ -29,6 +37,26 @@ export default function Dashboard({ onNavigate, ownerMode = false }: { onNavigat
     lexi:  { tasks:12, wins:'2 campaigns',  rate:95 },
     felix: { tasks:8,  wins:'3 reports',    rate:100 },
     nova:  { tasks:23, wins:'6 handoffs',   rate:89 },
+  }
+
+  const eventLabel = (event: AgentEvent) => ({
+    'marketing.campaign.created': 'created a campaign',
+    'marketing.lead.created': 'created a lead',
+    'sales.lead.received': 'received a lead',
+    'sales.outreach.generated': 'generated outreach',
+    'lead.status.updated': 'updated lead status',
+    'support.context.received': 'received context',
+    'task.delegated': 'delegated a task',
+  }[event.event_type] || event.event_type.replace(/\./g, ' '))
+
+  const ago = (iso: string) => {
+    const seconds = Math.max(1, Math.floor((Date.now() - new Date(iso).getTime()) / 1000))
+    if (seconds < 60) return `${seconds}s ago`
+    const minutes = Math.floor(seconds / 60)
+    if (minutes < 60) return `${minutes}m ago`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `${hours}h ago`
+    return `${Math.floor(hours / 24)}d ago`
   }
 
   return (
@@ -102,7 +130,7 @@ export default function Dashboard({ onNavigate, ownerMode = false }: { onNavigat
           )}
 
           {/* Agent Performance */}
-          <Card style={{ marginBottom:16 }}>
+          <Card style={{ marginBottom:16, display:'none' }}>
             <div style={{ fontSize:13, fontWeight:700, marginBottom:14 }}>Agent Performance Today</div>
             {AGENTS.map(a => {
               const stats = AGENT_PERF[a.id]
@@ -138,6 +166,27 @@ export default function Dashboard({ onNavigate, ownerMode = false }: { onNavigat
         {/* RIGHT */}
         <div>
           <Card style={{ marginBottom:16 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
+              <div style={{ fontSize:13, fontWeight:700 }}>Live Agent Pulse</div>
+              <button onClick={() => onNavigate('notifications')} style={{ background:'transparent', border:`0.5px solid ${C.border}`, borderRadius:6, color:C.text3, fontSize:10, padding:'4px 8px', cursor:'pointer' }}>Timeline</button>
+            </div>
+            {events.length === 0 && (
+              <div style={{ fontSize:12, color:C.text3, lineHeight:1.6 }}>No stored agent events yet. Start a collaborative campaign to create the first timeline.</div>
+            )}
+            {events.slice(0,5).map((item) => {
+              const agent = AGENTS.find(a => a.id === item.agent_id)
+              return (
+                <div key={item.id} style={{ display:'flex', gap:10, padding:'10px 0', borderBottom:`0.5px solid ${C.border}` }}>
+                  <div style={{ width:30, height:30, borderRadius:'50%', background:`${agent?.color || C.text3}20`, color:agent?.color || C.text3, display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:800, flexShrink:0 }}>{(agent?.name || item.agent_id).slice(0,1)}</div>
+                  <div>
+                    <div style={{ fontSize:12, color:C.text2, lineHeight:1.5 }}><span style={{ fontWeight:600, color:agent?.color || C.text2 }}>{agent?.name || item.agent_id}</span> {eventLabel(item)}</div>
+                    <div style={{ fontSize:10, color:C.text3, marginTop:2 }}>{ago(item.created_at)}</div>
+                  </div>
+                </div>
+              )
+            })}
+          </Card>
+          <Card style={{ marginBottom:16, display:'none' }}>
             <div style={{ fontSize:13, fontWeight:700, marginBottom:14 }}>🔴 Live Agent Pulse</div>
             {LIVE_PULSE.map((item, i) => (
               <div key={i} style={{ display:'flex', gap:10, padding:'10px 0', borderBottom:`0.5px solid ${C.border}` }}>

@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "concurrently \"node server.js\" \"vite --port 5000 --host 0.0.0.0\"",
     "build": "vite build",
-    "start": "node server.js"
+    "start": "node server.js",
+    "start:prod": "NODE_ENV=production node server.js"
   },
   "engines": {
     "node": ">=20"

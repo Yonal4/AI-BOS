@@ -10,7 +10,7 @@ import collaborationRouter from './server/collaboration-routes.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const isProd = process.env.NODE_ENV === 'production';
-const PORT = isProd ? (process.env.PORT || 5000) : 3001;
+const PORT = process.env.PORT || (isProd ? 5000 : 3001);
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -73,6 +73,12 @@ const distPath = path.join(__dirname, 'dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
   app.get('*', (_, res) => res.sendFile(path.join(distPath, 'index.html')));
+} else {
+  app.get('/', (_, res) => res.json({
+    status: 'ok',
+    service: 'AI BOS API',
+    message: 'Frontend build not found. Run npm run build before production start.'
+  }));
 }
 
 app.listen(PORT, '0.0.0.0', () =>

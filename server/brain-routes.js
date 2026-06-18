@@ -12,6 +12,7 @@ import {
   ensureCollection, upsertVectors, searchVectors,
   deleteByDocumentId, isQdrantEnabled
 } from './brain-qdrant.js';
+import { logBrainSearch } from './analytics-service.js';
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
@@ -162,7 +163,9 @@ router.post('/search', express.json(), async (req, res) => {
       results = rows.map(r => ({ content: r.content, score: r.score, doc_title: r.doc_title, doc_type: r.doc_type }));
     }
 
-    res.json({ results, mode: isEmbeddingsEnabled() && isQdrantEnabled() ? 'semantic' : 'fulltext' });
+    const mode = isEmbeddingsEnabled() && isQdrantEnabled() ? 'semantic' : 'fulltext';
+    await logBrainSearch({ orgId, query, mode, resultCount: results.length }).catch(() => {});
+    res.json({ results, mode });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -198,6 +201,7 @@ router.post('/context', express.json(), async (req, res) => {
       ? `Relevant company knowledge:\n\n${results.map((r, i) => `[${i + 1}] ${r}`).join('\n\n')}`
       : '';
 
+    await logBrainSearch({ orgId, query, mode: 'context', resultCount: results.length }).catch(() => {});
     res.json({ context, chunks: results.length });
   } catch (e) {
     res.status(500).json({ error: e.message });

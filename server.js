@@ -6,6 +6,7 @@ import fs from 'fs';
 import brainRouter from './server/brain-routes.js'
 import leadsRouter from './server/leads-routes.js';
 import collaborationRouter from './server/collaboration-routes.js';
+import analyticsRouter from './server/analytics-routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -68,6 +69,7 @@ app.post('/api/ai', async (req, res) => {
 app.use('/api/brain', brainRouter);
 app.use('/api/leads', leadsRouter);
 app.use('/api/collaboration', collaborationRouter);
+app.use('/api/analytics', analyticsRouter);
 
 const distPath = path.join(__dirname, 'dist');
 if (fs.existsSync(distPath)) {

@@ -7,6 +7,8 @@ import brainRouter from './server/brain-routes.js'
 import leadsRouter from './server/leads-routes.js';
 import collaborationRouter from './server/collaboration-routes.js';
 import analyticsRouter from './server/analytics-routes.js';
+import billingRouter from './server/billing-routes.js';
+import { handleStripeWebhook } from './server/billing-service.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -14,6 +16,7 @@ const isProd = process.env.NODE_ENV === 'production';
 const PORT = process.env.PORT || (isProd ? 5000 : 3001);
 
 app.use(cors());
+app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), handleStripeWebhook);
 app.use(express.json({ limit: '10mb' }));
 
 if (process.env.CLERK_SECRET_KEY) {
@@ -70,6 +73,7 @@ app.use('/api/brain', brainRouter);
 app.use('/api/leads', leadsRouter);
 app.use('/api/collaboration', collaborationRouter);
 app.use('/api/analytics', analyticsRouter);
+app.use('/api/billing', billingRouter);
 
 const distPath = path.join(__dirname, 'dist');
 if (fs.existsSync(distPath)) {

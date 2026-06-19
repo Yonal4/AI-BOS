@@ -2,6 +2,7 @@
   "name": "aibos",
   "version": "1.0.0",
   "type": "module",
+  "packageManager": "npm@9.8.1",
   "scripts": {
     "dev": "concurrently \"node server.js\" \"vite --port 5000 --host 0.0.0.0\"",
     "build": "vite build",
@@ -9,7 +10,8 @@
     "start:prod": "NODE_ENV=production node server.js"
   },
   "engines": {
-    "node": "20.x"
+    "node": "20.x",
+    "npm": "9.x"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",

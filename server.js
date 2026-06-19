@@ -87,6 +87,10 @@ if (fs.existsSync(distPath)) {
   }));
 }
 
-app.listen(PORT, '0.0.0.0', () =>
-  console.log(`AI BOS running on port ${PORT} (${isProd ? 'production' : 'development'})`)
-);
+if (!process.env.VERCEL && !process.env.NETLIFY) {
+  app.listen(PORT, '0.0.0.0', () =>
+    console.log(`AI BOS running on port ${PORT} (${isProd ? 'production' : 'development'})`)
+  );
+}
+
+export default app;

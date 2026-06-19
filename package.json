@@ -9,7 +9,7 @@
     "start:prod": "NODE_ENV=production node server.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": "20.x"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.27.3",

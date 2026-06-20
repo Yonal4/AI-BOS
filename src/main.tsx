@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { ClerkProvider } from '@clerk/clerk-react'
 import { dark } from '@clerk/themes'
 import App from './App'
+import ErrorBoundary from './components/ErrorBoundary'
 import { C } from './design'
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
@@ -87,7 +88,9 @@ if (!PUBLISHABLE_KEY) {
           }
         }}
       >
-        <App />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </ClerkProvider>
     </React.StrictMode>
   )

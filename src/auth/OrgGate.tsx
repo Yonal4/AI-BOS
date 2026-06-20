@@ -1,12 +1,12 @@
-import { useOrganization, useOrganizationList, CreateOrganization, UserButton } from '@clerk/clerk-react'
+import { ReactNode } from 'react'
+import { useOrganization, CreateOrganization, UserButton } from '@clerk/clerk-react'
 import { C } from '../design'
 import { Spin } from '../components/ui'
 
-export default function OrgGate({ children }: { children: React.ReactNode }) {
+export default function OrgGate({ children }: { children: ReactNode }) {
   const { organization, isLoaded } = useOrganization()
-  const { isLoaded: listLoaded } = useOrganizationList()
 
-  if (!isLoaded || !listLoaded) {
+  if (!isLoaded) {
     return (
       <div style={{ height:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:C.bg, fontFamily:"'Inter',system-ui,sans-serif" }}>
         <div style={{ textAlign:'center' }}>

@@ -120,7 +120,7 @@ router.delete('/documents/:id', async (req, res) => {
   try {
     const doc = await getDocument(id);
     if (!doc) return res.status(404).json({ error: 'Document not found.' });
-    if (doc.org_id !== orgId && orgId !== 'default') {
+    if (doc.org_id !== orgId) {
       return res.status(403).json({ error: 'Access denied.' });
     }
     if (isQdrantEnabled()) await deleteByDocumentId(id);

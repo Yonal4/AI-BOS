@@ -8,16 +8,15 @@ const EVENT_FILTERS = [
   { id: 'all', label: 'All Events' },
   { id: 'marketing.campaign.created', label: 'Campaigns' },
   { id: 'marketing.lead.created', label: 'Leads' },
+  { id: 'marketing.content.generated', label: 'Content' },
   { id: 'sales.lead.received', label: 'Sales Handoffs' },
   { id: 'sales.outreach.generated', label: 'Outreach' },
-  { id: 'support.context.received', label: 'Support Context' },
   { id: 'task.delegated', label: 'Delegations' },
 ]
 
 const AGENT_COPY: Record<string, { name: string; color: string; emoji: string }> = {
   lexi: { name: 'Marketing Agent', color: C.coral, emoji: 'M' },
   aria: { name: 'Sales Agent', color: C.purple2, emoji: 'S' },
-  marcus: { name: 'Support Agent', color: C.teal, emoji: 'C' },
 }
 
 function eventTitle(event: AgentEvent) {
@@ -26,10 +25,10 @@ function eventTitle(event: AgentEvent) {
   const names: Record<string, string> = {
     'marketing.campaign.created': `Marketing Agent created campaign${campaign?.name ? `: ${campaign.name}` : ''}`,
     'marketing.lead.created': `Marketing Agent created lead${lead?.name ? `: ${lead.name}` : ''}`,
+    'marketing.content.generated': `Marketing Agent generated ${event.payload?.type || 'content'}`,
     'sales.lead.received': `Sales Agent received lead${lead?.name ? `: ${lead.name}` : ''}`,
     'sales.outreach.generated': `Sales Agent generated outreach${event.entity_id ? ` for lead #${event.entity_id}` : ''}`,
     'lead.status.updated': `Lead status updated${event.payload?.to ? ` to ${event.payload.to}` : ''}`,
-    'support.context.received': `Support Agent received context${event.entity_id ? ` for lead #${event.entity_id}` : ''}`,
     'task.delegated': `${event.payload?.toAgent || 'Agent'} received delegated task`,
     'sales.outreach.failed': 'Sales Agent outreach generation failed',
   }
@@ -108,7 +107,7 @@ export default function Notifications() {
           <button onClick={()=>setAgentFilter('all')} style={{ padding:'6px 12px', borderRadius:20, border:`0.5px solid ${agentFilter==='all'?C.teal:C.border}`, background:agentFilter==='all'?'rgba(34,211,176,0.12)':'transparent', color:agentFilter==='all'?C.teal:C.text3, fontSize:11, cursor:'pointer' }}>
             All agents
           </button>
-          {AGENTS.filter(a => ['lexi','aria','marcus'].includes(a.id)).map(a => (
+          {AGENTS.filter(a => ['lexi','aria'].includes(a.id)).map(a => (
             <button key={a.id} onClick={()=>setAgentFilter(a.id)} style={{ padding:'6px 12px', borderRadius:20, border:`0.5px solid ${agentFilter===a.id?a.color:C.border}`, background:agentFilter===a.id?a.bg:'transparent', color:agentFilter===a.id?a.color:C.text3, fontSize:11, cursor:'pointer' }}>
               {a.name} {counts[a.id] ? `(${counts[a.id]})` : ''}
             </button>

@@ -3,16 +3,16 @@ import { SignInButton, SignUpButton } from '@clerk/clerk-react'
 const agents = [
   { id: 'M', name: 'Marketing', action: 'Creates campaign', color: '#ff7a45' },
   { id: 'S', name: 'Sales', action: 'Receives lead', color: '#8b7cff' },
-  { id: 'C', name: 'Support', action: 'Receives context', color: '#22d3b0' },
+  { id: 'B', name: 'Brain', action: 'Supplies context', color: '#22d3b0' },
 ]
 
 const brainItems = [
   'Campaign history',
   'Lead status',
   'Outreach drafts',
-  'Support context',
   'Brand voice',
   'Product docs',
+  'Search memory',
 ]
 
 const trust = ['SOC2-ready architecture', 'Stripe billing', 'Org-scoped memory', 'Event audit trail']
@@ -23,7 +23,7 @@ const plans = [
     name: 'Starter',
     price: '$299',
     line: 'For founders validating AI operations',
-    features: ['1 AI agent', '5K AI actions', 'Company Brain starter', 'Email support'],
+    features: ['Company Brain starter', 'Marketing Agent', 'Sales Agent', 'Event timeline'],
   },
   {
     id: 'growth',
@@ -31,14 +31,14 @@ const plans = [
     price: '$799',
     line: 'For teams replacing repetitive work',
     featured: true,
-    features: ['3 collaborating agents', '25K AI actions', 'Shared memory', 'Priority support'],
+    features: ['Marketing and Sales collaboration', '25K AI actions', 'Shared memory', 'Priority queue'],
   },
   {
     id: 'business',
     name: 'Business',
     price: '$1,999',
     line: 'For businesses running AI workflows daily',
-    features: ['All AI agents', 'Advanced analytics', 'Billing portal', 'Custom workflows'],
+    features: ['Company Brain scale', 'Advanced analytics', 'Billing portal', 'Custom workflows'],
   },
 ]
 
@@ -499,7 +499,7 @@ export default function Landing() {
               <div className="eyebrow"><span className="pulse" /> Agent collaboration engine for modern teams</div>
               <h1>Run the business layer <span className="h1-gradient">with AI employees.</span></h1>
               <p className="hero-copy">
-                AI BOS coordinates marketing, sales, support, billing, and company knowledge through one shared memory layer. Every action is tracked, scoped to your organization, and ready for production.
+                AI BOS coordinates Company Brain, Marketing Agent, and Sales Agent through one shared memory layer. Every action is tracked, scoped to your organization, and ready for production.
               </p>
               <div className="hero-actions">
                 <SignUpButton mode="modal"><button className="btn primary">Start building</button></SignUpButton>
@@ -533,8 +533,8 @@ export default function Landing() {
               <div className="event-list">
                 {[
                   ['Marketing Agent', 'created campaign'],
+                  ['Marketing Agent', 'created lead'],
                   ['Sales Agent', 'generated outreach'],
-                  ['Support Agent', 'received customer context'],
                 ].map(([who, action]) => (
                   <div className="event" key={who}>
                     <span className="event-dot" />
@@ -560,7 +560,7 @@ export default function Landing() {
                   ['01', 'Marketing creates a campaign', 'Lexi builds the campaign, stores the event, and creates the first lead.'],
                   ['02', 'Sales receives the lead', 'Aria is delegated the task with all campaign context attached.'],
                   ['03', 'Outreach is generated', 'The lead status updates, and every action is written to the event timeline.'],
-                  ['04', 'Support receives context', 'Marcus gets the campaign and sales history before the customer ever opens a ticket.'],
+                  ['04', 'Company Brain persists memory', 'The campaign, lead, outreach, and timeline remain available after refreshes and restarts.'],
                 ].map(([num, title, copy]) => (
                   <div className="step" key={num}>
                     <div className="step-num">{num}</div>

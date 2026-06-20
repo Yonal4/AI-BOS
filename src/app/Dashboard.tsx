@@ -50,7 +50,7 @@ function eventLabel(event: any) {
     'sales.lead.received': 'Sales Agent received lead',
     'sales.outreach.generated': 'Sales Agent generated outreach',
     'lead.status.updated': 'Lead status updated',
-    'support.context.received': 'Support Agent received context',
+    'marketing.content.generated': 'Marketing Agent generated content',
     'task.delegated': 'Task delegated',
   }[event.event_type] || String(event.event_type || 'Agent event').replace(/\./g, ' '))
 }
@@ -88,7 +88,7 @@ export default function Dashboard({ onNavigate, ownerMode = false }: { onNavigat
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           {loading && <Badge type="info">Loading</Badge>}
           {error && <Badge type="danger">Analytics unavailable</Badge>}
-          <Btn variant="ghost" onClick={() => onNavigate('notifications')} style={{ fontSize:12 }}>Timeline</Btn>
+          <Btn variant="ghost" onClick={() => onNavigate('timeline')} style={{ fontSize:12 }}>Timeline</Btn>
         </div>
       </div>
 
@@ -181,7 +181,7 @@ export default function Dashboard({ onNavigate, ownerMode = false }: { onNavigat
           <Card>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:14 }}>
               <div style={{ fontSize:13, fontWeight:700 }}>Recent Events</div>
-              <button onClick={() => onNavigate('notifications')} style={{ background:'transparent', border:`0.5px solid ${C.border}`, borderRadius:6, color:C.text3, fontSize:10, padding:'4px 8px', cursor:'pointer' }}>Open timeline</button>
+              <button onClick={() => onNavigate('timeline')} style={{ background:'transparent', border:`0.5px solid ${C.border}`, borderRadius:6, color:C.text3, fontSize:10, padding:'4px 8px', cursor:'pointer' }}>Open timeline</button>
             </div>
             {analytics.agentActivity.recentEvents.length === 0 ? (
               <div style={{ fontSize:12, color:C.text3, lineHeight:1.6 }}>No stored events yet.</div>

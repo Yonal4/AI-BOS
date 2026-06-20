@@ -19,9 +19,6 @@ export const C = {
 } as const
 
 export const AGENTS = [
-  { id:'aria',   name:'Aria',   role:'Sales SDR',       emoji:'📊', color:'#7c6dfa', bg:'rgba(124,109,250,0.15)' },
-  { id:'marcus', name:'Marcus', role:'Support',          emoji:'🎧', color:'#22d3b0', bg:'rgba(34,211,176,0.15)'  },
-  { id:'lexi',   name:'Lexi',   role:'Marketing',        emoji:'📣', color:'#f06a40', bg:'rgba(240,106,64,0.15)'  },
-  { id:'felix',  name:'Felix',  role:'Finance',          emoji:'💰', color:'#facc4b', bg:'rgba(250,204,75,0.15)'  },
-  { id:'nova',   name:'Nova',   role:'Operations',       emoji:'⚙️', color:'#63c8c8', bg:'rgba(99,200,200,0.15)'  },
+  { id: 'lexi', name: 'Lexi', role: 'Marketing Agent', emoji: 'M', color: '#f06a40', bg: 'rgba(240,106,64,0.15)' },
+  { id: 'aria', name: 'Aria', role: 'Sales Agent', emoji: 'S', color: '#7c6dfa', bg: 'rgba(124,109,250,0.15)' },
 ]

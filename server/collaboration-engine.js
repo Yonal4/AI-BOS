@@ -1,5 +1,6 @@
 import pg from 'pg'
 import { createLead, updateLead } from './leads-db.js'
+import { fullTextSearch } from './brain-db.js'
 
 const { Pool } = pg
 
@@ -15,7 +16,6 @@ function getPool() {
 const AGENTS = {
   marketing: { id: 'lexi', name: 'Lexi', role: 'marketing' },
   sales: { id: 'aria', name: 'Aria', role: 'sales' },
-  support: { id: 'marcus', name: 'Marcus', role: 'support' },
 }
 
 let schemaReady = false
@@ -92,10 +92,23 @@ export async function ensureCollaborationSchema() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS marketing_outputs (
+      id BIGSERIAL PRIMARY KEY,
+      org_id TEXT NOT NULL,
+      output_type TEXT NOT NULL,
+      prompt TEXT NOT NULL,
+      output TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'draft',
+      created_by TEXT NOT NULL DEFAULT 'lexi',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
     CREATE INDEX IF NOT EXISTS idx_agent_events_org_time ON agent_events (org_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_agent_events_workflow ON agent_events (workflow_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_agent_tasks_agent ON agent_tasks (org_id, to_agent, status);
     CREATE INDEX IF NOT EXISTS idx_shared_memory_entity ON shared_memory (org_id, entity_type, entity_id);
+    CREATE INDEX IF NOT EXISTS idx_marketing_outputs_org_time ON marketing_outputs (org_id, created_at DESC);
   `)
   schemaReady = true
 }
@@ -161,10 +174,26 @@ async function failTask(taskId, error) {
   return rows[0]
 }
 
+async function getCompanyBrainContext(orgId, query) {
+  try {
+    const rows = await fullTextSearch(query, orgId, 4)
+    return rows
+      .map((row, index) => `[${index + 1}] ${row.doc_title}: ${row.content}`)
+      .join('\n\n')
+  } catch {
+    return ''
+  }
+}
+
 async function generateOutreach({ lead, campaign }) {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY is required for Sales Agent outreach generation')
   }
+
+  const companyContext = await getCompanyBrainContext(
+    campaign.org_id || lead.org_id || 'default',
+    `${campaign.name} ${campaign.audience} ${campaign.offer} ${lead.company || ''}`
+  )
 
   const prompt = `Write a personalized outbound email under 130 words.
 Lead: ${lead.name}
@@ -173,6 +202,8 @@ Email: ${lead.email || 'Unknown'}
 Campaign: ${campaign.name}
 Audience: ${campaign.audience}
 Offer: ${campaign.offer}
+Company Brain context:
+${companyContext || 'No relevant Company Brain context found.'}
 Source: Marketing Agent Lexi generated this lead.
 Sign as Aria, AI Sales Rep at AI BOS.`
 
@@ -207,7 +238,7 @@ export async function createCampaignWorkflow(orgId, input) {
   const id = workflowId()
   await getPool().query(
     `INSERT INTO agent_workflows (id, org_id, workflow_type, status, current_step, input, started_by)
-     VALUES ($1,$2,'marketing_to_sales_to_support','running','marketing_campaign_created',$3,'lexi')`,
+     VALUES ($1,$2,'marketing_to_sales','running','marketing_campaign_created',$3,'lexi')`,
     [id, orgId, input]
   )
 
@@ -307,7 +338,7 @@ export async function createCampaignWorkflow(orgId, input) {
       payload: { taskId: salesTask.id, outreach }
     })
 
-    const updatedLead = await updateLead(lead.id, { status: 'Contacted' })
+    const updatedLead = await updateLead(lead.id, { status: 'Contacted' }, orgId)
     await publishEvent({
       orgId,
       workflowId: id,
@@ -318,44 +349,8 @@ export async function createCampaignWorkflow(orgId, input) {
       payload: { from: lead.status, to: updatedLead.status, lead: updatedLead }
     })
 
-    const supportTask = await delegateTask({
-      orgId,
-      workflowId: id,
-      fromAgent: 'sales',
-      toAgent: 'support',
-      taskType: 'receive_customer_context',
-      payload: {
-        leadId: updatedLead.id,
-        campaignId: campaign.id,
-        contextKeys: [`lead:${lead.id}:marketing_context`, `lead:${lead.id}:sales_outreach`]
-      }
-    })
-    await completeTask(supportTask.id, { readyForHandoff: true, leadId: updatedLead.id })
-    await remember({
-      orgId,
-      key: `lead:${lead.id}:support_context`,
-      entityType: 'lead',
-      entityId: lead.id,
-      ownerAgent: 'marcus',
-      value: {
-        lead: updatedLead,
-        campaign,
-        outreach,
-        supportInstruction: 'Use this context if the lead becomes a customer or opens a support ticket.'
-      }
-    })
-    await publishEvent({
-      orgId,
-      workflowId: id,
-      agent: AGENTS.support,
-      eventType: 'support.context.received',
-      entityType: 'lead',
-      entityId: String(lead.id),
-      payload: { taskId: supportTask.id, leadId: updatedLead.id, campaignId: campaign.id }
-    })
-
     await getPool().query(
-      `UPDATE agent_workflows SET status='completed', current_step='support_context_received', result=$1, updated_at=NOW() WHERE id=$2`,
+      `UPDATE agent_workflows SET status='completed', current_step='sales_outreach_generated', result=$1, updated_at=NOW() WHERE id=$2`,
       [{ campaignId: campaign.id, leadId: updatedLead.id, outreach }, id]
     )
   } catch (e) {
@@ -376,6 +371,84 @@ export async function createCampaignWorkflow(orgId, input) {
   }
 
   return getWorkflow(orgId, id)
+}
+
+async function generateMarketingOutput({ orgId, type, prompt }) {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error('ANTHROPIC_API_KEY is required for Marketing Agent content generation')
+  }
+
+  const companyContext = await getCompanyBrainContext(orgId || 'default', prompt)
+
+  const instructions = {
+    linkedin: 'Write a high-performing LinkedIn post under 180 words.',
+    email: 'Write five high-converting email subject lines.',
+    ad: 'Write a paid social ad with headline, body, and CTA.',
+    blog: 'Write a practical blog outline with five sections.',
+  }
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 700,
+      system: 'You are Lexi, AI BOS Marketing Agent. Produce specific, usable marketing assets. No filler.',
+      messages: [{ role: 'user', content: `${instructions[type] || instructions.linkedin}\n\nCompany Brain context:\n${companyContext || 'No relevant Company Brain context found.'}\n\nGoal:\n${prompt}` }]
+    })
+  })
+
+  const data = await response.json()
+  if (!response.ok || data.error) throw new Error(data.error?.message || 'Marketing content generation failed')
+  return data.content?.find(block => block.type === 'text')?.text || ''
+}
+
+export async function createMarketingContent(orgId, input) {
+  await ensureCollaborationSchema()
+  const type = String(input.type || 'linkedin')
+  const prompt = String(input.prompt || '').trim()
+  if (!prompt) throw new Error('prompt is required')
+  const output = await generateMarketingOutput({ orgId, type, prompt })
+
+  const { rows } = await getPool().query(
+    `INSERT INTO marketing_outputs (org_id, output_type, prompt, output, status)
+     VALUES ($1,$2,$3,$4,'draft') RETURNING *`,
+    [orgId, type, prompt, output]
+  )
+  const content = rows[0]
+
+  await publishEvent({
+    orgId,
+    workflowId: null,
+    agent: AGENTS.marketing,
+    eventType: 'marketing.content.generated',
+    entityType: 'marketing_output',
+    entityId: String(content.id),
+    payload: { outputId: content.id, type, prompt }
+  })
+  await remember({
+    orgId,
+    key: `marketing_output:${content.id}`,
+    entityType: 'marketing_output',
+    entityId: content.id,
+    ownerAgent: 'lexi',
+    value: { type, prompt, output, status: content.status }
+  })
+
+  return content
+}
+
+export async function listMarketingContent(orgId) {
+  await ensureCollaborationSchema()
+  const { rows } = await getPool().query(
+    `SELECT * FROM marketing_outputs WHERE org_id=$1 ORDER BY created_at DESC LIMIT 50`,
+    [orgId]
+  )
+  return rows
 }
 
 export async function getWorkflow(orgId, id) {
@@ -481,11 +554,12 @@ export async function listMemory(orgId, { entityType, entityId, workflowId } = {
 
 export async function collaborationOverview(orgId) {
   await ensureCollaborationSchema()
-  const [events, tasks, campaigns, memory] = await Promise.all([
+  const [events, tasks, campaigns, content, memory] = await Promise.all([
     listEvents(orgId, { limit: 30 }),
     listTasks(orgId, {}),
     getPool().query(`SELECT * FROM marketing_campaigns WHERE org_id=$1 ORDER BY created_at DESC LIMIT 20`, [orgId]),
+    getPool().query(`SELECT * FROM marketing_outputs WHERE org_id=$1 ORDER BY created_at DESC LIMIT 20`, [orgId]),
     listMemory(orgId, {})
   ])
-  return { events, tasks, campaigns: campaigns.rows, memory }
+  return { events, tasks, campaigns: campaigns.rows, content: content.rows, memory }
 }

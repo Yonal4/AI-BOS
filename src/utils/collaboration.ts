@@ -53,7 +53,7 @@ export async function createCollaborativeCampaign(input: any, orgId?: string | n
   }, orgId)
 }
 
-export async function getAgentTasks(agent: 'sales' | 'support' | 'marketing', orgId?: string | null): Promise<AgentTask[]> {
+export async function getAgentTasks(agent: 'sales' | 'marketing', orgId?: string | null): Promise<AgentTask[]> {
   const data = await collaborationApi(`/tasks?agent=${agent}`, {}, orgId)
   return data.tasks || []
 }

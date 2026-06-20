@@ -57,13 +57,13 @@ export async function listLeads(orgId, { status, search } = {}) {
   return rows
 }
 
-export async function getLead(id) {
+export async function getLead(id, orgId) {
   await ensureLeadsSchema()
-  const { rows } = await getPool().query(`SELECT * FROM leads WHERE id=$1`, [id])
+  const { rows } = await getPool().query(`SELECT * FROM leads WHERE id=$1 AND org_id=$2`, [id, orgId || 'default'])
   return rows[0] || null
 }
 
-export async function updateLead(id, fields) {
+export async function updateLead(id, fields, orgId) {
   await ensureLeadsSchema()
   const allowed = ['name','email','company','source','status','notes','assigned_agent','value','score']
   const sets = [], params = []
@@ -71,18 +71,19 @@ export async function updateLead(id, fields) {
     const col = k.replace(/([A-Z])/g, '_$1').toLowerCase()
     if (allowed.includes(col)) { params.push(v); sets.push(`${col}=$${params.length}`) }
   }
-  if (!sets.length) return getLead(id)
+  if (!sets.length) return getLead(id, orgId)
   params.push(id)
+  params.push(orgId || 'default')
   const { rows } = await getPool().query(
-    `UPDATE leads SET ${sets.join(',')}, updated_at=NOW() WHERE id=$${params.length} RETURNING *`,
+    `UPDATE leads SET ${sets.join(',')}, updated_at=NOW() WHERE id=$${params.length - 1} AND org_id=$${params.length} RETURNING *`,
     params
   )
   return rows[0]
 }
 
-export async function deleteLead(id) {
+export async function deleteLead(id, orgId) {
   await ensureLeadsSchema()
-  await getPool().query(`DELETE FROM leads WHERE id=$1`, [id])
+  await getPool().query(`DELETE FROM leads WHERE id=$1 AND org_id=$2`, [id, orgId || 'default'])
 }
 
 export async function getLeadStats(orgId) {
@@ -103,23 +104,4 @@ export async function getLeadStats(orgId) {
     [orgId||'default']
   )
   return rows[0]
-}
-
-export async function seedSampleLeads(orgId) {
-  await ensureLeadsSchema()
-  const { rows } = await getPool().query(`SELECT COUNT(*) FROM leads WHERE org_id=$1`, [orgId])
-  if (parseInt(rows[0].count) > 0) return
-  const samples = [
-    ['Jordan Blake',  'jordan@techflow.io',  'TechFlow',   'LinkedIn',   'Qualified',     'Intro call went well. Very interested in the Sales Hub.', 'aria', 1999, 94],
-    ['Sarah Chen',    'sarah@nexusai.co',    'Nexus AI',   'Outbound',   'Proposal Sent', 'Sent Growth plan proposal. Awaiting decision from CEO.',   'aria', 1999, 87],
-    ['Marcus Reid',   'm.reid@flowstack.com','FlowStack',  'Website',    'Contacted',     'Downloaded whitepaper. Followed up via email.',           'aria', 799,  82],
-    ['Priya Sharma',  'priya@orbis.io',      'Orbis Labs', 'Referral',   'Qualified',     'Referred by Jordan. Strong fit for Operations Hub.',      'aria', 1999, 91],
-    ['Alex Kovacs',   'alex@clearpath.ai',   'Clearpath',  'Cold Email', 'New',           'Cold outreach. No reply yet.',                            'aria', 299,  76],
-    ['Mei Lin',       'mei@vantage.io',      'Vantage',    'LinkedIn',   'Won',           'Signed Team plan. Onboarding scheduled.',                 'aria', 1999, 95],
-    ['David Torres',  'd.torres@synapse.com','Synapse',    'Website',    'Lost',          'Budget constraints. Follow up in Q2.',                    'aria', 799,  60],
-    ['Emma Walsh',    'emma@growthco.io',    'GrowthCo',   'Referral',   'Contacted',     'Initial discovery call booked for next week.',            'aria', 1999, 83],
-  ]
-  for (const [name,email,company,source,status,notes,agent,value,score] of samples) {
-    await createLead({ orgId, name, email, company, source, status, notes, assignedAgent:agent, value, score })
-  }
 }

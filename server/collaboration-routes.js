@@ -1,9 +1,11 @@
 import express from 'express'
 import {
   collaborationOverview,
+  createMarketingContent,
   createCampaignWorkflow,
   getWorkflow,
   listEvents,
+  listMarketingContent,
   listMemory,
   listTasks
 } from './collaboration-engine.js'
@@ -24,6 +26,20 @@ router.post('/campaigns', express.json(), async (req, res) => {
   try {
     const workflow = await createCampaignWorkflow(getOrgId(req), req.body)
     res.status(201).json(workflow)
+  } catch (e) { res.status(400).json({ error: e.message }) }
+})
+
+router.get('/marketing-content', async (req, res) => {
+  try {
+    const content = await listMarketingContent(getOrgId(req))
+    res.json({ content })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+router.post('/marketing-content', express.json(), async (req, res) => {
+  try {
+    const content = await createMarketingContent(getOrgId(req), req.body)
+    res.status(201).json({ content })
   } catch (e) { res.status(400).json({ error: e.message }) }
 })
 

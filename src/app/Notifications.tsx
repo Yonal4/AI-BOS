@@ -85,7 +85,7 @@ export default function Notifications() {
   }, [events])
 
   return (
-    <div style={{ flex:1, overflow:'auto', padding:'20px', background:C.bg }}>
+    <div style={{ height:'100%', overflow:'auto', padding:'20px', background:C.bg, boxSizing:'border-box' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
         <div>
           <div style={{ fontSize:18, fontWeight:800, letterSpacing:-.5 }}>Agent Activity Timeline</div>

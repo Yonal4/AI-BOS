@@ -27,7 +27,7 @@ export default function Settings() {
   ]
 
   return (
-    <div style={{ flex:1, overflow:'auto', padding:'20px', background:C.bg }}>
+    <div style={{ height:'100%', overflow:'auto', padding:'20px', background:C.bg, boxSizing:'border-box' }}>
       <div style={{ marginBottom:16 }}>
         <div style={{ fontSize:18, fontWeight:800, letterSpacing:-.5 }}>⚙️ Settings</div>
         <div style={{ fontSize:12, color:C.text3, marginTop:2 }}>

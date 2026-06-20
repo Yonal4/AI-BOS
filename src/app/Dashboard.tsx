@@ -79,7 +79,7 @@ export default function Dashboard({ onNavigate, ownerMode = false }: { onNavigat
   ]
 
   return (
-    <div style={{ flex:1, overflow:'auto', padding:'20px', background:C.bg }}>
+    <div style={{ height:'100%', overflow:'auto', padding:'20px', background:C.bg, boxSizing:'border-box' }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
         <div>
           <div style={{ fontSize:20, fontWeight:800, letterSpacing:-.5 }}>{ownerMode ? 'Owner Dashboard' : 'Dashboard'}</div>

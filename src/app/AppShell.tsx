@@ -129,7 +129,7 @@ export default function AppShell() {
           </div>
         </aside>
 
-        <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <main style={{ flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ height: 48, borderBottom: `0.5px solid ${C.border}`, display: 'flex', alignItems: 'center', padding: '0 20px', gap: 12, flexShrink: 0, background: C.bg2 }}>
             <div style={{ flex: 1, fontSize: 13, color: C.text3 }}>
               <span style={{ color: C.text2 }}>AI BOS</span>
@@ -147,7 +147,7 @@ export default function AppShell() {
             </div>
             <UserButton afterSignOutUrl="/" />
           </div>
-          <div style={{ flex: 1, overflow: 'hidden' }}>
+          <div style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
             {views[view] || views.dashboard}
           </div>
         </main>

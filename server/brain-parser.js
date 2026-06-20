@@ -35,7 +35,8 @@ export async function parseTxt(buffer) {
 
 export async function parsePdf(buffer) {
   try {
-    const pdfParse = (await import('pdf-parse/lib/pdf-parse.js')).default;
+    const mod = await import('pdf-parse');
+    const pdfParse = mod.default || mod;
     const data = await pdfParse(buffer);
     return cleanText(data.text);
   } catch (e) {
@@ -61,7 +62,7 @@ export async function parseFile(buffer, mimetype, originalname) {
   if (ext === '.docx' || mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
     return parseDocx(buffer);
   }
-  if (ext === '.txt' || mimetype === 'text/plain' || mimetype === 'text/markdown') {
+  if (ext === '.txt' || ext === '.md' || mimetype === 'text/plain' || mimetype === 'text/markdown') {
     return parseTxt(buffer);
   }
   throw new Error(`Unsupported file type: ${ext || mimetype}`);

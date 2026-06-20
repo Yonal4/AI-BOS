@@ -207,7 +207,7 @@ export default function CompanyBrain() {
   const handleDelete = async (id: string) => {
     if (!confirm('Remove this document from Company Brain?')) return
     try {
-      await fetch(`/api/brain/documents/${id}`, { method: 'DELETE' })
+      await fetch(`/api/brain/documents/${id}`, { method: 'DELETE', headers: orgHeaders() })
       setDocs(p => p.filter(d => d.id !== id))
       fetchStatus()
     } catch {/* ignore */}

@@ -1,4 +1,5 @@
-import { SignInButton, SignUpButton } from '@clerk/clerk-react'
+import { useState } from 'react'
+import { SignIn, SignUp } from '@clerk/clerk-react'
 
 const agents = [
   { id: 'M', name: 'Marketing', action: 'Creates campaign', color: '#ff7a45' },
@@ -43,6 +44,8 @@ const plans = [
 ]
 
 export default function Landing() {
+  const [auth, setAuth] = useState<'signin' | 'signup' | null>(null)
+
   return (
     <div className="site">
       <style>{`
@@ -487,8 +490,8 @@ export default function Landing() {
           <a href="#pricing">Pricing</a>
         </div>
         <div className="nav-actions">
-          <SignInButton mode="modal"><button className="btn">Log in</button></SignInButton>
-          <SignUpButton mode="modal"><button className="btn primary">Start free</button></SignUpButton>
+          <button className="btn" onClick={() => setAuth('signin')}>Log in</button>
+          <button className="btn primary" onClick={() => setAuth('signup')}>Start free</button>
         </div>
       </nav>
 
@@ -502,7 +505,7 @@ export default function Landing() {
                 AI BOS coordinates Company Brain, Marketing Agent, and Sales Agent through one shared memory layer. Every action is tracked, scoped to your organization, and ready for production.
               </p>
               <div className="hero-actions">
-                <SignUpButton mode="modal"><button className="btn primary">Start building</button></SignUpButton>
+                <button className="btn primary" onClick={() => setAuth('signup')}>Start building</button>
                 <a className="btn" href="#workflow" style={{ display:'inline-flex', alignItems:'center' }}>See the system</a>
               </div>
               <div className="proof-row">
@@ -535,8 +538,8 @@ export default function Landing() {
                   ['Marketing Agent', 'created campaign'],
                   ['Marketing Agent', 'created lead'],
                   ['Sales Agent', 'generated outreach'],
-                ].map(([who, action]) => (
-                  <div className="event" key={who}>
+                ].map(([who, action], i) => (
+                  <div className="event" key={i}>
                     <span className="event-dot" />
                     <b>{who} {action}</b>
                     <small>stored</small>
@@ -620,7 +623,7 @@ export default function Landing() {
                   <div className="features">
                     {plan.features.map(feature => <div className="feature" key={feature}><span className="check">✓</span>{feature}</div>)}
                   </div>
-                  <SignUpButton mode="modal"><button className={`btn ${plan.featured ? 'primary' : ''}`} style={{ width:'100%' }}>{plan.featured ? 'Start Growth' : `Start ${plan.name}`}</button></SignUpButton>
+                  <button className={`btn ${plan.featured ? 'primary' : ''}`} style={{ width:'100%' }} onClick={() => setAuth('signup')}>{plan.featured ? 'Start Growth' : `Start ${plan.name}`}</button>
                 </div>
               ))}
             </div>
@@ -630,7 +633,7 @@ export default function Landing() {
         <section className="cta">
           <h2>Put your agents, memory, billing, and analytics in one operating layer.</h2>
           <p>AI BOS is the business control plane for founders who want software that actually does the work.</p>
-          <SignUpButton mode="modal"><button className="btn primary" style={{ height:52, padding:'0 28px', fontSize:15 }}>Start AI BOS</button></SignUpButton>
+          <button className="btn primary" style={{ height:52, padding:'0 28px', fontSize:15 }} onClick={() => setAuth('signup')}>Start AI BOS</button>
         </section>
       </main>
 
@@ -638,6 +641,27 @@ export default function Landing() {
         <div className="brand"><span className="mark">B</span><span>AI BOS</span></div>
         <div>Product · Pricing · Security · Docs · Privacy</div>
       </footer>
+
+      {auth && (
+        <div
+          onClick={() => setAuth(null)}
+          style={{ position:'fixed', inset:0, background:'rgba(5,5,9,0.85)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:20 }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:12 }}>
+            {auth === 'signin'
+              ? <SignIn routing="hash" afterSignInUrl="/" />
+              : <SignUp routing="hash" afterSignUpUrl="/" />
+            }
+            <div style={{ display:'flex', gap:16, fontSize:13, color:'rgba(255,255,255,0.5)' }}>
+              {auth === 'signin'
+                ? <><span>No account?</span><button onClick={() => setAuth('signup')} style={{ background:'none', border:'none', color:'#8b7cff', cursor:'pointer', fontSize:13, padding:0 }}>Sign up free</button></>
+                : <><span>Already have an account?</span><button onClick={() => setAuth('signin')} style={{ background:'none', border:'none', color:'#8b7cff', cursor:'pointer', fontSize:13, padding:0 }}>Log in</button></>
+              }
+              <button onClick={() => setAuth(null)} style={{ background:'none', border:'none', color:'rgba(255,255,255,0.3)', cursor:'pointer', fontSize:13, padding:0 }}>✕ Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
